@@ -1,0 +1,25 @@
+node_modules/
+dist/
+public/data/
+public/media/
+*.tsbuildinfo
+.DS_Store
+.env*
+
+# Local tooling and private configuration
+.idea/
+.vscode/
+.agents/
+.codex/
+*.log
+coverage/
+*.pem
+*.key
+
+# Local project instructions and delivery materials
+AGENTS.md
+docs/*
+!docs/desktop.jpg
+!docs/mobile.jpg
+!docs/cooking-ipad.jpg
+!docs/github-pages.yml

@@ -1,0 +1,6 @@
+content/
+public/data/
+public/media/
+dist/
+node_modules/
+package-lock.json
