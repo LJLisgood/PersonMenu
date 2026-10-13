@@ -1,13 +1,15 @@
-import { ArrowUpRight, CookingPot } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowUpRight, CookingPot, Heart, Clock } from 'lucide-react';
 import { assetUrl } from './state';
+import { usePersonal } from './PersonalState';
 import type { Recipe } from './types';
 export function Difficulty({ value }: { value: number | null }) {
   return (
     <span className="difficulty" aria-label={value ? `难度 ${value} 星` : '难度未提供'}>
       {value ? (
         <>
-          <span>{'★'.repeat(value)}</span>
-          <span className="muted-star">{'☆'.repeat(5 - value)}</span>
+          <span aria-hidden="true">{'★'.repeat(value)}</span>
+          <span className="difficulty-label">难度 {value}/5</span>
         </>
       ) : (
         '难度未提供'
@@ -15,37 +17,94 @@ export function Difficulty({ value }: { value: number | null }) {
     </span>
   );
 }
-export function RecipeCard({ recipe, href }: { recipe: Recipe; href: string }) {
+export function RecipeImage({
+  recipe,
+  eager = false,
+  className = '',
+}: {
+  recipe: Recipe;
+  eager?: boolean;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState<string | null>(null);
   return (
-    <a className="recipe-card" href={href}>
-      <div className="recipe-photo">
-        {recipe.cover ? (
-          <img
-            src={assetUrl(recipe.cover)}
-            alt={recipe.name}
-            loading="lazy"
-            width="640"
-            height="420"
-          />
-        ) : (
-          <div className="photo-placeholder">
-            <CookingPot strokeWidth={1.2} size={52} />
-            <span>{recipe.category} · 家常味道</span>
-          </div>
-        )}
-        <span className="card-open">
-          <ArrowUpRight size={19} />
-        </span>
-      </div>
+    <div className={`recipe-photo ${className}`}>
+      {recipe.cover && failed !== recipe.cover ? (
+        <img
+          src={assetUrl(recipe.cover)}
+          alt={`${recipe.name}成品图`}
+          loading={eager ? 'eager' : 'lazy'}
+          fetchPriority={eager ? 'high' : 'auto'}
+          width="640"
+          height="480"
+          onError={() => setFailed(recipe.cover)}
+        />
+      ) : (
+        <div className="photo-placeholder">
+          <CookingPot strokeWidth={1.2} size={44} />
+          <span>{recipe.name}</span>
+          <small>{failed ? '图片暂时无法加载' : '暂无成品照片'}</small>
+          {failed && (
+            <button
+              className="text-button"
+              onClick={(e) => {
+                e.preventDefault();
+                setFailed(null);
+              }}
+            >
+              重试图片
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+export function FavoriteButton({ recipe, compact = false }: { recipe: Recipe; compact?: boolean }) {
+  const { saved, toggle } = usePersonal();
+  const active = saved.favorites.includes(recipe.id);
+  return (
+    <button
+      className={`favorite-button ${compact ? 'compact' : 'button subtle'} ${active ? 'is-saved' : ''}`}
+      aria-label={`${active ? '取消收藏' : '收藏'}${recipe.name}`}
+      aria-pressed={active}
+      onClick={() => toggle(recipe.id, recipe.name)}
+    >
+      <Heart size={19} fill={active ? 'currentColor' : 'none'} />
+      {!compact && (active ? '已收藏' : '收藏菜谱')}
+    </button>
+  );
+}
+export function RecipeCard({
+  recipe,
+  href,
+  eager = false,
+}: {
+  recipe: Recipe;
+  href: string;
+  eager?: boolean;
+}) {
+  return (
+    <article className="recipe-card">
+      <RecipeImage recipe={recipe} eager={eager} />
       <div className="card-content">
-        <h3>{recipe.name}</h3>
+        <h3>
+          <a className="recipe-card-link" href={href}>
+            {recipe.name}
+            <ArrowUpRight className="card-arrow" size={16} />
+          </a>
+        </h3>
         <div className="recipe-meta">
           <span>{recipe.category}</span>
-          <i />
-          <Difficulty value={recipe.difficulty} />
-          {recipe.totalMinutes && <span>{recipe.totalMinutes} 分钟</span>}
+          {recipe.difficulty !== null && <Difficulty value={recipe.difficulty} />}
+          {recipe.totalMinutes !== null && (
+            <span>
+              <Clock size={13} />
+              {recipe.totalMinutes} 分钟
+            </span>
+          )}
         </div>
-        <p>{recipe.description || '从备料到出锅，把一道家常菜认真做好。'}</p>
+        {recipe.description && <p>{recipe.description}</p>}
         {recipe.tags.length > 0 && (
           <div className="card-tags">
             {recipe.tags.slice(0, 3).map((tag) => (
@@ -54,6 +113,7 @@ export function RecipeCard({ recipe, href }: { recipe: Recipe; href: string }) {
           </div>
         )}
       </div>
-    </a>
+      <FavoriteButton recipe={recipe} compact />
+    </article>
   );
 }

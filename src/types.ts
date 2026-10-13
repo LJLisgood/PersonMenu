@@ -37,7 +37,9 @@ export type Filters = {
   exclude: string;
 };
 export type Route = {
-  page: 'library' | 'recipe' | 'cook' | 'add';
+  page: 'home' | 'library' | 'favorites' | 'recent' | 'recipe' | 'cook' | 'add';
+  from?: 'home' | 'library' | 'favorites' | 'recent';
+  sort?: 'name' | 'time' | 'difficulty';
   id?: string;
   filters: Filters;
   view: 'grid' | 'list';

@@ -1,5 +1,10 @@
+import { useEffect, useRef } from 'react';
+import { emptyFilters } from './state';
 import {
   BookOpen,
+  House,
+  Heart,
+  History,
   ChefHat,
   Leaf,
   Beef,
@@ -36,18 +41,49 @@ export function Sidebar({
   navigate,
   open,
   close,
+  favoriteCount,
 }: {
   manifest: Manifest;
   route: Route;
   navigate: (r: Route) => void;
   open: boolean;
   close: () => void;
+  favoriteCount: number;
 }) {
+  const panel = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    panel.current?.querySelector<HTMLElement>('.close-sidebar')?.focus();
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const elements = [
+        ...(panel.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') || []),
+      ].filter((element) => element.getClientRects().length);
+      const first = elements[0],
+        last = elements.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener('keydown', trap);
+    return () => {
+      document.removeEventListener('keydown', trap);
+    };
+  }, [open]);
+  const go = (page: 'home' | 'favorites' | 'recent') => {
+    navigate({ page, view: route.view, filters: { ...emptyFilters } });
+    close();
+  };
   const select = (category = '', source = '') => {
     navigate({
       ...route,
       page: 'library',
       id: undefined,
+      from: undefined,
       filters: { ...route.filters, category, source },
     });
     close();
@@ -59,14 +95,23 @@ export function Sidebar({
   );
   return (
     <>
-      {open && <button className="sidebar-scrim" aria-label="关闭分类面板" onClick={close} />}
-      <aside className={`sidebar ${open ? 'is-open' : ''}`} aria-label="菜谱分类">
+      {open && (
+        <button className="sidebar-scrim" tabIndex={-1} aria-label="关闭分类面板" onClick={close} />
+      )}
+      <aside
+        ref={panel}
+        id="recipe-sidebar"
+        role={open ? 'dialog' : undefined}
+        aria-modal={open || undefined}
+        className={`sidebar ${open ? 'is-open' : ''}`}
+        aria-label="菜谱分类"
+      >
         <div className="brand">
           <a
-            href="#/"
+            href="#/home"
             onClick={(e) => {
               e.preventDefault();
-              select();
+              go('home');
             }}
           >
             <ChefHat size={29} />
@@ -79,7 +124,24 @@ export function Sidebar({
         </div>
         <nav className="primary-nav">
           <button
-            className={!route.filters.category && !route.filters.source ? 'active' : ''}
+            className={route.page === 'home' ? 'active' : ''}
+            aria-current={route.page === 'home' ? 'page' : undefined}
+            onClick={() => go('home')}
+          >
+            <House size={20} />
+            首页
+          </button>
+          <button
+            className={
+              route.page === 'library' && !route.filters.category && !route.filters.source
+                ? 'active'
+                : ''
+            }
+            aria-current={
+              route.page === 'library' && !route.filters.category && !route.filters.source
+                ? 'page'
+                : undefined
+            }
             onClick={() => select()}
           >
             <Grid2X2 size={20} />
@@ -87,23 +149,57 @@ export function Sidebar({
           </button>
           <button
             className={
-              route.filters.source === 'personal' && !route.filters.category ? 'active' : ''
+              route.page === 'library' &&
+              route.filters.source === 'personal' &&
+              !route.filters.category
+                ? 'active'
+                : ''
+            }
+            aria-current={
+              route.page === 'library' &&
+              route.filters.source === 'personal' &&
+              !route.filters.category
+                ? 'page'
+                : undefined
             }
             onClick={() => select('', 'personal')}
           >
             <UserRound size={20} />
             我的菜谱<span>{manifest.recipes.filter((r) => r.source === 'personal').length}</span>
           </button>
+          <button
+            className={route.page === 'favorites' ? 'active' : ''}
+            aria-current={route.page === 'favorites' ? 'page' : undefined}
+            onClick={() => go('favorites')}
+          >
+            <Heart size={20} />
+            我的收藏<span>{favoriteCount}</span>
+          </button>
+          <button
+            className={route.page === 'recent' ? 'active' : ''}
+            aria-current={route.page === 'recent' ? 'page' : undefined}
+            onClick={() => go('recent')}
+          >
+            <History size={20} />
+            最近浏览
+          </button>
         </nav>
         <div className="sidebar-section">
-          <span>分类</span>
+          <span>分类 · 全库数量</span>
           <nav>
             {categories.map((category) => {
               const Icon = icons[category] || BookOpen;
               return (
                 <button
                   key={category}
-                  className={route.filters.category === category ? 'active' : ''}
+                  className={
+                    route.page === 'library' && route.filters.category === category ? 'active' : ''
+                  }
+                  aria-current={
+                    route.page === 'library' && route.filters.category === category
+                      ? 'page'
+                      : undefined
+                  }
                   onClick={() => select(category, route.filters.source)}
                 >
                   <Icon size={19} />
@@ -121,7 +217,7 @@ export function Sidebar({
             HowToCook
             <ExternalLink size={15} />
           </a>
-          <small>本地收藏，慢慢做好每一餐。</small>
+          <small>收藏与浏览记录仅存于此浏览器。</small>
         </div>
       </aside>
     </>
