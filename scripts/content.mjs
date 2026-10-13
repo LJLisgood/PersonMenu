@@ -54,6 +54,27 @@ export function localTarget(url, filename, contentRoot) {
     throw new Error(`资源超出内容目录: ${url}`);
   return target;
 }
+function collectReferences(tree) {
+  const references = [];
+  visit(tree, (n) => {
+    if (n.type === 'image' || n.type === 'link')
+      references.push({ kind: n.type, url: n.url, alt: n.alt ?? '' });
+  });
+  const definitions = new Map();
+  visit(tree, 'definition', (n) => definitions.set(n.identifier, n.url));
+  visit(tree, (n) => {
+    if (n.type === 'imageReference' || n.type === 'linkReference') {
+      const url = definitions.get(n.identifier);
+      if (url) references.push({ kind: n.type === 'imageReference' ? 'image' : 'link', url });
+    }
+  });
+  return references;
+}
+
+export function markdownReferences(raw) {
+  return collectReferences(parser.parse(matter(raw).content));
+}
+
 export function parseRecipe(raw, relativePath, source = 'howtocook') {
   const { data, content } = matter(raw);
   const tree = parser.parse(content);
@@ -134,19 +155,7 @@ export function parseRecipe(raw, relativePath, source = 'howtocook') {
       n.children.some((child) => child.type === 'text' && child.value.trim()),
   );
   const difficultyText = content.match(/(?:预估烹饪难度|难度)[：:]\s*([★⭐]+)/);
-  const references = [];
-  visit(tree, (n) => {
-    if (n.type === 'image' || n.type === 'link')
-      references.push({ kind: n.type, url: n.url, alt: n.alt ?? '' });
-  });
-  const definitions = new Map();
-  visit(tree, 'definition', (n) => definitions.set(n.identifier, n.url));
-  visit(tree, (n) => {
-    if (n.type === 'imageReference' || n.type === 'linkReference') {
-      const url = definitions.get(n.identifier);
-      if (url) references.push({ kind: n.type === 'imageReference' ? 'image' : 'link', url });
-    }
-  });
+  const references = collectReferences(tree);
   if (data.cover) references.push({ kind: 'image', url: data.cover });
   return {
     id: source === 'personal' ? data.id : `htc-${hash(relativePath)}`,

@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { collectUpstreamData } from './upstream-data.mjs';
 const DEFAULT = '3dfa950f6daf0a5b311fc46619f1b559bac980c4';
 export async function importUpstream(root, archive, commit) {
   if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error('必须指定完整 40 位上游 commit SHA');
@@ -21,18 +22,17 @@ export async function importUpstream(root, archive, commit) {
     if (directory !== `HowToCook-${commit}`)
       throw new Error('归档目录与指定 commit 不一致，请使用该版本的 GitHub tar.gz 归档');
     const source = path.join(staging, directory);
-    const { walk, hash } = await import('./content.mjs');
-    const files = await walk(path.join(source, 'dishes'));
-    const recipes = files.filter((f) => f.endsWith('.md') && !f.includes('/template/'));
+    const { hash } = await import('./content.mjs');
+    const { recipes, files } = await collectUpstreamData(source);
     const oldFile = path.join(root, 'content/howtocook/upstream.json');
     const old = JSON.parse(await fs.readFile(oldFile, 'utf8').catch(() => '{}'));
     const nextDir = path.join(root, 'content', `.howtocook-${Date.now()}`);
     await fs.mkdir(nextDir, { recursive: true });
-    await fs.cp(path.join(source, 'dishes'), path.join(nextDir, 'dishes'), { recursive: true });
-    // Include local linked kitchen notes so internal references are portable.
-    await fs.cp(path.join(source, 'tips'), path.join(nextDir, 'tips'), { recursive: true });
-    for (const name of ['LICENSE', 'README.md'])
-      await fs.copyFile(path.join(source, name), path.join(nextDir, name));
+    for (const file of files) {
+      const target = path.join(nextDir, path.relative(source, file));
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.copyFile(file, target);
+    }
     const checksums = {};
     for (const file of recipes)
       checksums[path.relative(source, file)] = hash(await fs.readFile(file));

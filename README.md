@@ -63,11 +63,11 @@ git push
 - 浏览器 localStorage 只保存做菜进度、备料勾选和计时结束时间。后台恢复、刷新后计时按实际时间校正。浏览器关闭后不保证响铃，也没有跨设备同步。
 - 屏幕常亮、全屏和提醒声音取决于浏览器与设备支持，失败不影响阅读。
 
-## HowToCook 本地副本
+## HowToCook 菜谱数据
 
-首次固定导入 [Anduin2017/HowToCook](https://github.com/Anduin2017/HowToCook) commit `3dfa950f6daf0a5b311fc46619f1b559bac980c4`，含 373 篇实际菜谱；模板不进入列表。`content/howtocook/dishes/` 保存原始菜谱与所有仓库配图，`tips/` 保存被引用的厨房知识文件。原始文件未经过改写。
+首次固定导入 [Anduin2017/HowToCook](https://github.com/Anduin2017/HowToCook) commit `3dfa950f6daf0a5b311fc46619f1b559bac980c4`，含 373 篇实际菜谱；模板不进入列表。`content/howtocook/dishes/` 只保存正式菜谱及其实际引用的本地资源，`tips/` 只保存菜谱直接或间接引用的厨房知识文件。保留原始路径与内容，不复制上游项目工程、README、示例模板或未引用资源。
 
-保留 [Unlicense](content/howtocook/LICENSE)、上游 README 和 `content/howtocook/upstream.json`，后者记录版本、内容校验值及更新差异。菜谱详情可打开固定版本来源原文。
+保留 [Unlicense](content/howtocook/LICENSE) 和 `content/howtocook/upstream.json`，后者记录版本、内容校验值及更新差异。菜谱详情可打开固定版本来源原文。
 
 显式更新到一个完整 commit SHA：
 
@@ -81,7 +81,7 @@ npm run upstream:update -- --commit <40位commit>
 npm run upstream:update -- --commit <40位commit> --archive /绝对路径/source.tar.gz
 ```
 
-更新只替换上游目录，保留个人内容；验证失败恢复旧上游。提交变更前检查上游记录中的 `changes`。普通构建不会自动更新上游。第一次下载约百 MB，速度取决于网络。
+更新只替换上游目录，保留个人内容；验证失败恢复旧上游。提交变更前检查上游记录中的 `changes`。普通构建不会自动更新上游。更新时归档下载到系统临时目录，只将筛选后的菜谱数据写入项目；下载量仍约百 MB，速度取决于网络。
 
 内容报告位于 `public/data/import-report.json`（构建生成、Git 忽略）。它列出无法分步的菜谱、外部引用和失效的本地引用。该固定版本存在 3 个上游失效内部链接，没有缺失本地图片；网页提示失效引用并保留原文。个人菜谱缺失图片或本地文件会使构建失败。外部图片以说明文字呈现，核心展示不依赖远程图片。
 
