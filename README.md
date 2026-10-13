@@ -2,7 +2,7 @@
 
 React + TypeScript + Vite 的纯静态菜谱库。菜谱与图片都在本地项目文件中；运行时没有后端、数据库、云存储、账号或 AI 服务。网页可全文搜索、按拼音检索、组合筛选，并提供分步烹饪、备料勾选和厨房计时。
 
-[MIT License](LICENSE) · [贡献指南](CONTRIBUTING.md) · [问题反馈](https://github.com/LJLisgood/mymenu-local/issues)
+[MIT License](LICENSE) · [贡献指南](CONTRIBUTING.md) · [问题反馈](https://github.com/LJLisgood/PersonMenu/issues)
 
 ![灶台笔记桌面预览](docs/desktop.jpg)
 
@@ -11,8 +11,8 @@ React + TypeScript + Vite 的纯静态菜谱库。菜谱与图片都在本地项
 需要 Node.js 22.12+（推荐 Node 22 LTS）与 npm。
 
 ```bash
-git clone https://github.com/LJLisgood/mymenu-local.git
-cd mymenu-local
+git clone https://github.com/LJLisgood/PersonMenu.git
+cd PersonMenu
 npm ci
 npm run dev
 ```
@@ -94,11 +94,11 @@ npm run upstream:update -- --commit <40位commit> --archive /绝对路径/source
 若使用 `<用户名>.github.io` 用户站点仓库或自定义域名，请将工作流中的 `BASE_PATH` 改为 `/`。本地模拟仓库子路径：
 
 ```bash
-BASE_PATH=/mymenu-local/ npm run build
+BASE_PATH=/PersonMenu/ npm run build
 npm run preview
 ```
 
-浏览器打开 `/mymenu-local/`。回到本地根路径构建时运行普通 `npm run build`。公开 Pages 站点中的菜谱、照片和原文可被下载；私人菜谱在发布前需自行决定是否公开。
+浏览器打开 `/PersonMenu/`。回到本地根路径构建时运行普通 `npm run build`。公开 Pages 站点中的菜谱、照片和原文可被下载；私人菜谱在发布前需自行决定是否公开。
 
 ## 项目结构与生成边界
 
@@ -114,7 +114,7 @@ Markdown 在构建时转成经过 sanitize 的 HTML，原始 HTML 不执行。�
 
 ## 参与贡献
 
-欢迎通过 [Issues](https://github.com/LJLisgood/mymenu-local/issues) 报告问题，或提交 Pull Request。提交前请阅读 [贡献指南](CONTRIBUTING.md)，运行 `npm test` 与 `npm run build`。修复上游菜谱原文请优先向 HowToCook 提交；自己的版本放入 `content/personal/`。
+欢迎通过 [Issues](https://github.com/LJLisgood/PersonMenu/issues) 报告问题，或提交 Pull Request。提交前请阅读 [贡献指南](CONTRIBUTING.md)，运行 `npm test` 与 `npm run build`。修复上游菜谱原文请优先向 HowToCook 提交；自己的版本放入 `content/personal/`。
 
 ## 许可证与致谢
 
