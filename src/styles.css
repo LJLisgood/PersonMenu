@@ -204,8 +204,7 @@ summary {
   border-top: 1px solid #ffffff26;
   padding-top: 18px;
 }
-.sidebar-section > span,
-.sidebar-footer > span {
+.sidebar-section > span {
   font-size: 12px;
   opacity: 0.56;
   padding: 0 14px;
@@ -216,32 +215,6 @@ summary {
 .sidebar-section nav button {
   padding-top: 10px;
   padding-bottom: 10px;
-}
-.sidebar-footer {
-  margin-top: auto;
-  padding-top: 40px;
-}
-.sidebar-footer > span {
-  display: block;
-  border-top: 1px solid #ffffff26;
-  padding-top: 18px;
-}
-.sidebar-footer a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 8px 14px 0;
-  font-size: 14px;
-}
-.sidebar-footer a svg:last-child {
-  margin-left: auto;
-  opacity: 0.6;
-}
-.sidebar-footer small {
-  display: block;
-  color: #a5b8ae;
-  font-size: 10px;
-  margin: 14px 14px 0;
 }
 .close-sidebar,
 .sidebar-scrim,
@@ -1882,18 +1855,11 @@ select,
 .sidebar nav button > span {
   opacity: 0.8;
 }
-.sidebar-section > span,
-.sidebar-footer > span {
+.sidebar-section > span {
   opacity: 0.8;
 }
 .primary-nav {
   margin: 12px 0 20px;
-}
-.sidebar-footer {
-  padding-top: 24px;
-}
-.sidebar-footer small {
-  font-size: 11px;
 }
 .workspace {
   margin-left: 208px;

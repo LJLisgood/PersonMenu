@@ -17,8 +17,6 @@ import {
   Package,
   SlidersHorizontal,
   Grid2X2,
-  UserRound,
-  ExternalLink,
   X,
 } from 'lucide-react';
 import type { Manifest, Route } from './types';
@@ -148,26 +146,6 @@ export function Sidebar({
             全部菜谱<span>{manifest.recipes.length}</span>
           </button>
           <button
-            className={
-              route.page === 'library' &&
-              route.filters.source === 'personal' &&
-              !route.filters.category
-                ? 'active'
-                : ''
-            }
-            aria-current={
-              route.page === 'library' &&
-              route.filters.source === 'personal' &&
-              !route.filters.category
-                ? 'page'
-                : undefined
-            }
-            onClick={() => select('', 'personal')}
-          >
-            <UserRound size={20} />
-            我的菜谱<span>{manifest.recipes.filter((r) => r.source === 'personal').length}</span>
-          </button>
-          <button
             className={route.page === 'favorites' ? 'active' : ''}
             aria-current={route.page === 'favorites' ? 'page' : undefined}
             onClick={() => go('favorites')}
@@ -209,15 +187,6 @@ export function Sidebar({
               );
             })}
           </nav>
-        </div>
-        <div className="sidebar-footer">
-          <span>菜谱来源</span>
-          <a href="https://github.com/Anduin2017/HowToCook" target="_blank" rel="noreferrer">
-            <BookOpen size={18} />
-            HowToCook
-            <ExternalLink size={15} />
-          </a>
-          <small>收藏与浏览记录仅存于此浏览器。</small>
         </div>
       </aside>
     </>
