@@ -4,7 +4,7 @@
 
 线上域名按当前站点 `https://psmenu.jerrystack.org` 举例。更换域名时，需要同时更新本文提到的 `APP_ORIGIN`、Supabase 回调和 Turnstile 域名。
 
-2026-10-14 首次上线：已导入 373 道菜谱、700 个资源（约 47.4 MB），配置 Auth、Turnstile、Resend SMTP 和生产运行时 Secrets，使用现有 Git 自动发布。`ALLOW_WRITES` 当前保留为 `"false"`，待站点所有者注册并验证邮箱、取得管理员权限后再开启。菜谱列表、详情与公开图片已通过正式域名读取检查；注册邮件、游客提交和管理员写入仍需完成真实账号联调。
+2026-10-14 首次上线：已导入 373 道菜谱、700 个资源（约 47.4 MB），配置 Auth、Turnstile、Resend SMTP 和生产运行时 Secrets，使用现有 Git 自动发布。站点所有者已通过正式网站注册、收到验证邮件并完成验证；数据库已授予该已验证账号管理员权限，`ALLOW_WRITES` 设为 `"true"`。菜谱列表、详情、公开图片和私有资源访问限制已通过正式域名检查，注册邮件在 Resend 确认为 delivered。业务写入与通知的实际联调结果以交付记录为准。
 
 ## 配置值去哪里拿、填在哪里
 
@@ -16,7 +16,7 @@
 | `SUPABASE_PUBLISHABLE_KEY` | Supabase 项目 → Settings → API Keys → Publishable key，通常为 `sb_publishable_...` | `wrangler.jsonc` → `vars` |
 | `SUPABASE_SERVICE_ROLE_KEY` | 同一 API Keys 页面 → Secret key（`sb_secret_...`，推荐）；也兼容 Legacy API Keys → `service_role`。**不是 anon key，也不是 Publishable key** | Worker Secret |
 | `APP_ORIGIN` | 你自己的站点来源，例如 `https://psmenu.jerrystack.org`，不带末尾 `/`、路径或 Hash | `wrangler.jsonc` → `vars` |
-| `ALLOW_WRITES` | 配置全部完成后主动设为字符串 `"true"`；仓库默认为 `"false"` | `wrangler.jsonc` → `vars` |
+| `ALLOW_WRITES` | 生产已设为字符串 `"true"`；新环境引导期间先设为 `"false"`，完成验证和管理员授权后再开启 | `wrangler.jsonc` → `vars` |
 | `TURNSTILE_SITE_KEY` | Cloudflare → Turnstile → Add widget，创建 Managed 类型并添加站点域名 | `wrangler.jsonc` → `vars` |
 | `TURNSTILE_SECRET_KEY` | 上面同一个 Turnstile widget 的 Secret key | Worker Secret；还需填写到 Supabase CAPTCHA 配置 |
 | `RESEND_API_KEY` | Resend → API Keys → Create API Key，选择 Sending access，限制到所用发件域名 | Worker Secret；同时作为 Supabase SMTP 密码使用 |

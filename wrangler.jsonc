@@ -19,7 +19,7 @@
     "SUPABASE_URL": "https://xqdddxiqqskgocilrxpx.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_1npHS3_NeY0X91JISsorvQ_KVEwsYiy",
     "APP_ORIGIN": "https://psmenu.jerrystack.org",
-    "ALLOW_WRITES": "false",
+    "ALLOW_WRITES": "true",
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFWc5ftFgBygEDHq",
     "MAIL_FROM": "灶台笔记 <notify@auth.jerrystack.org>",
   },
