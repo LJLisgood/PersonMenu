@@ -11,7 +11,7 @@ export function Account() {
     [notice, setNotice] = useState('');
   const execute = async (event: FormEvent) => {
     event.preventDefault();
-    if (!cloud.client) return;
+    if (!cloud.client || busy) return;
     setBusy(true);
     setNotice('');
     cloud.clearAuthNotice?.();
@@ -101,7 +101,7 @@ export function Account() {
           </div>
         </div>
       ) : (
-        <form className="cloud-form" onSubmit={execute}>
+        <form className="cloud-form" onSubmit={execute} aria-busy={busy}>
           {!cloud.recovery && (
             <div className="cloud-tabs">
               {(
@@ -115,6 +115,7 @@ export function Account() {
                   key={value}
                   type="button"
                   aria-pressed={mode === value}
+                  disabled={busy}
                   onClick={() => {
                     setMode(value);
                     setNotice('');
@@ -132,6 +133,7 @@ export function Account() {
                 type="email"
                 autoComplete="email"
                 required
+                disabled={busy}
                 maxLength={254}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -149,6 +151,7 @@ export function Account() {
                   minLength={8}
                   maxLength={128}
                   required
+                  disabled={busy}
                   autoComplete={
                     cloud.recovery || mode === 'signup' ? 'new-password' : 'current-password'
                   }
@@ -160,9 +163,25 @@ export function Account() {
             </div>
           )}
           <div ref={captcha.element} />
+          {busy && (captcha.status === 'loading' || captcha.status === 'verifying') && (
+            <>
+              <p className="cloud-hint" role="status">
+                {captcha.status === 'loading'
+                  ? '正在加载人机验证，请稍候。'
+                  : '请完成上方的人机验证，通过后会继续提交。'}
+              </p>
+              <button className="button subtle" type="button" onClick={captcha.cancel}>
+                取消验证
+              </button>
+            </>
+          )}
           <button className="button primary" disabled={busy}>
             {busy
-              ? '正在处理…'
+              ? captcha.status === 'loading'
+                ? '正在加载验证…'
+                : captcha.status === 'verifying'
+                  ? '等待验证通过…'
+                  : '正在提交…'
               : cloud.recovery
                 ? '保存新密码'
                 : mode === 'signup'
@@ -173,17 +192,17 @@ export function Account() {
           </button>
         </form>
       )}
+      {notice && (
+        <p className="notice" role="status">
+          {notice}
+        </p>
+      )}
       <p className="cloud-hint">
         登录后使用该账号的云端收藏，本机游客收藏单独保留。登录已有账号不会自动合并游客申请记录。
       </p>
       {cloud.session?.user.is_anonymous && (
         <p className="cloud-hint">
           当前为游客身份。换设备、退出或清理浏览器后，游客申请记录不能自动找回。
-        </p>
-      )}
-      {notice && (
-        <p className="notice" role="status">
-          {notice}
         </p>
       )}
       {cloud.authNotice && (

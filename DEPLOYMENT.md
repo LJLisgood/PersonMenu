@@ -213,6 +213,7 @@ npx wrangler deploy
 
 常见情况：
 
+- 注册按钮停在等待验证、且没有 `/auth/v1/signup` 请求：注册会先等待 Turnstile 令牌，再调用 Supabase，不表示 SMTP 已失败。验证码现在会显示出来；脚本加载 15 秒超时、验证 90 秒超时或错误回调都会恢复按钮，也可点击“取消验证”后重新提交。控制台 `300*` / `600*` 是 Cloudflare 的通用挑战失败，不能仅据此判定具体原因；检查浏览器扩展、VPN/代理和网络，必要时在无痕窗口或其他浏览器手动重试。`110200` 则表示当前域名不在 widget 的 hostname 白名单。不要通过关闭生产验证码或改用测试 key 绕过问题。
 - `线上写入暂未启用`：检查 `ALLOW_WRITES`、Production service role Secret，并重新部署。
 - `公开配置无效`：检查是否把数据库连接字符串误填进 Project URL，或把 Secret / service_role / Resend key 误填进 Publishable key。接口会拒绝公开返回这些错误配置的原值。
 - `请求来源不正确`：`APP_ORIGIN` 必须与浏览器当前来源一致；本地和生产值不同。
