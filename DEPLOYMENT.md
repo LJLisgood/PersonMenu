@@ -4,6 +4,8 @@
 
 线上域名按当前站点 `https://psmenu.jerrystack.org` 举例。更换域名时，需要同时更新本文提到的 `APP_ORIGIN`、Supabase 回调和 Turnstile 域名。
 
+2026-10-14 首次上线：已导入 373 道菜谱、700 个资源（约 47.4 MB），配置 Auth、Turnstile、Resend SMTP 和生产运行时 Secrets，使用现有 Git 自动发布。`ALLOW_WRITES` 当前保留为 `"false"`，待站点所有者注册并验证邮箱、取得管理员权限后再开启。菜谱列表、详情与公开图片已通过正式域名读取检查；注册邮件、游客提交和管理员写入仍需完成真实账号联调。
+
 ## 配置值去哪里拿、填在哪里
 
 公开值写入根目录 `wrangler.jsonc` 的 `vars`；敏感值写入 **Worker 的 Secrets**，本地则写入 `.dev.vars`。代码没有使用 `VITE_*` 注入秘密，切勿自行把服务端密钥改成 Vite 公开变量。
@@ -21,7 +23,7 @@
 | `MAIL_FROM` | 使用 Resend 已验证域名，例如 `灶台笔记 <notify@auth.jerrystack.org>` | `wrangler.jsonc` → `vars` |
 | `ADMIN_EMAIL` | 实际接收点菜、投稿提醒的邮箱 | Worker Secret |
 | `MEDIA` | R2 桶绑定，不是文本变量，不需要 S3 访问密钥 | `wrangler.jsonc` → `r2_buckets` |
-| `R2_BUCKET_NAME` | 当前使用的现有桶 `jerry` | **仅本地导入/导出** `.dev.vars`，线上 Worker 使用 `MEDIA` 绑定 |
+| `R2_BUCKET_NAME` | 当前使用的私有桶 `personmenu-media` | **仅本地导入/导出** `.dev.vars`，线上 Worker 使用 `MEDIA` 绑定 |
 
 `SUPABASE_SERVICE_ROLE_KEY` 拥有绕过 RLS 的权限，因此仅供服务端已验证身份、角色和归属后的操作使用。变量名表示其服务端用途，值同时支持新的 Secret key 与 legacy `service_role` JWT；不要把数据库连接密码或个人 access token 填进这个变量。新的公开与私有 API key 只通过 `apikey` 请求头发送，用户身份才通过 Bearer JWT 发送，符合 [Supabase 的 API key 说明](https://supabase.com/docs/guides/getting-started/api-keys)。
 
@@ -50,7 +52,7 @@ npx wrangler secret put TURNSTILE_SECRET_KEY --name personmenu
 npx wrangler secret put ADMIN_EMAIL --name personmenu
 ```
 
-根目录 `wrangler.jsonc` 是公开变量和 R2 绑定的配置来源，修改后重新部署。当前已配置 `name: personmenu`、正确的 Cloudflare 账号和 `MEDIA → jerry` 桶绑定。迁移到其他账号时需同时更改这些值。
+根目录 `wrangler.jsonc` 是公开变量和 R2 绑定的配置来源，修改后重新部署。当前已配置 `name: personmenu`、正确的 Cloudflare 账号和 `MEDIA → personmenu-media` 桶绑定。迁移到其他账号时需同时更改这些值。
 
 ## 1. 建表与授予管理员
 
@@ -125,12 +127,12 @@ Supabase → Authentication → Email / SMTP Settings 启用 Custom SMTP：
 
 ## 4. R2 创建和绑定
 
-当前使用账号内已有、部署前为空的 `jerry` 桶，选择 Standard 存储。创建其他环境时才需要新建桶。保持桶私有，无需开启 `r2.dev` 或公开桶域名。
+当前使用专用于菜谱应用的 `personmenu-media` 私有桶，选择 Standard 存储。账号中已有的 `jerry` 桶启用了公开访问，不能用于待审或草稿照片。保持桶私有，不开启 `r2.dev` 或公开桶域名。绑定前分别用 `npx wrangler r2 bucket dev-url get personmenu-media` 和 `npx wrangler r2 bucket domain list personmenu-media` 确认开发 URL 已关闭且无公开自定义域名；只靠应用 API 鉴权无法保护公有桶中的照片。
 
 修改 `wrangler.jsonc`：
 
 ```json
-"r2_buckets": [{ "binding": "MEDIA", "bucket_name": "jerry" }]
+"r2_buckets": [{ "binding": "MEDIA", "bucket_name": "personmenu-media" }]
 ```
 
 函数通过受控 `/api/media/<资源ID>` 读取图片，先检查公开状态或登录者归属。投稿和草稿图片保持私有；发布时随菜谱开放访问，下架时收回不再被其他已发布菜谱引用的照片权限。客户端缓存最多 60 秒，因此已经打开或缓存的公开照片不会被远程擦除。
@@ -187,6 +189,8 @@ npx wrangler deploy
 ```
 
 也可运行 `npm run deploy:cloud`，它会先构建再发布。`wrangler.jsonc` 使用 `main: server/worker.ts` 和 `assets.directory: ./dist`，只有 `/api`、`/api/*` 优先进入 Worker；其余请求由 Static Assets 服务处理。Hash 路由和站点域名保持原样。
+
+如果本地发布在 `/workers/scripts/personmenu/deployments` 返回 `No access to the specified resource`，检查 Wrangler OAuth 是否包含 `workers_scripts:write`。旧的 `workers:write` 能操作部分旧接口和 R2，并不等于拥有新版本发布接口权限。现有 Workers Builds 的构建令牌已验证可以发布，可继续通过推送 `main` 更新站点。
 
 云端构建会从部署产物移除本地 `data/`、`media/`，保留许可证，线上菜谱统一来自 Supabase。源 Markdown 和本地生成目录不会删除。`public/_routes.json` 和 `functions/` 是可选 Pages 适配，当前生产使用 Worker 入口；不要运行 `wrangler pages deploy` 创建另一个站点。
 

@@ -23,5 +23,5 @@
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFWc5ftFgBygEDHq",
     "MAIL_FROM": "灶台笔记 <notify@auth.jerrystack.org>",
   },
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "jerry" }],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "personmenu-media" }],
 }
