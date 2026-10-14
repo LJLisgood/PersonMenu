@@ -19,6 +19,7 @@ export function useSearch(manifest: Manifest | null, filters: Filters) {
     setReady(false);
     setError('');
     next.onmessage = ({ data }) => {
+      if (worker.current !== next) return;
       if (data.type === 'ready') setReady(true);
       if (data.type === 'error') {
         setError(data.message);
@@ -33,21 +34,24 @@ export function useSearch(manifest: Manifest | null, filters: Filters) {
       }
     };
     next.onerror = () => {
+      if (worker.current !== next) return;
       setError('搜索加载失败，请刷新页面重试。');
       setBusy(false);
     };
-    fetch(assetUrl('data/search.json'), { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('搜索索引加载失败');
-        return r.text();
-      })
-      .then((index) => next.postMessage({ type: 'init', index, recipes: manifest.recipes }))
-      .catch((e) => {
-        if (e.name !== 'AbortError') {
-          setError(e.message);
-          setBusy(false);
-        }
-      });
+    if (manifest.cloud) next.postMessage({ type: 'init', recipes: manifest.recipes });
+    else
+      fetch(assetUrl('data/search.json'), { signal: controller.signal })
+        .then((r) => {
+          if (!r.ok) throw new Error('搜索索引加载失败');
+          return r.text();
+        })
+        .then((index) => next.postMessage({ type: 'init', index, recipes: manifest.recipes }))
+        .catch((e) => {
+          if (e.name !== 'AbortError') {
+            setError(e.message);
+            setBusy(false);
+          }
+        });
     return () => {
       controller.abort();
       next.terminate();

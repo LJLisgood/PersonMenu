@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Menu, ChefHat, X } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Library } from './Library';
@@ -9,14 +9,25 @@ import { assetUrl, parseRoute, routeHash, returnRoute } from './state';
 import type { Manifest, RecipeDetail, Route } from './types';
 import { Home } from './Home';
 import { PersonalProvider, usePersonal } from './PersonalState';
+import { CloudProvider, useCloud, loadCloudCatalog } from './Cloud';
+const Account = lazy(() => import('./Account').then((module) => ({ default: module.Account })));
+const Requests = lazy(() => import('./Requests').then((module) => ({ default: module.Requests })));
+const Admin = lazy(() => import('./Admin').then((module) => ({ default: module.Admin })));
+const RecipeEditor = lazy(() =>
+  import('./RecipeEditor').then((module) => ({ default: module.RecipeEditor })),
+);
 export function App() {
   return (
-    <PersonalProvider>
-      <Application />
-    </PersonalProvider>
+    <CloudProvider>
+      <PersonalProvider>
+        <Application />
+      </PersonalProvider>
+    </CloudProvider>
   );
 }
 function Application() {
+  const cloud = useCloud();
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
   const { saved, notice, temporary, dismiss, visit } = usePersonal();
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [error, setError] = useState('');
@@ -33,20 +44,24 @@ function Application() {
   };
   const lastVisit = useRef('');
   useEffect(() => {
+    if (!cloud.ready) return;
+    setError('');
     const controller = new AbortController();
-    fetch(assetUrl('data/manifest.json'), { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('菜谱清单加载失败');
-        return r.json();
-      })
+    const source = cloud.config.enabled
+      ? loadCloudCatalog(cloud.api, controller.signal)
+      : fetch(assetUrl('data/manifest.json'), { signal: controller.signal }).then((r) => {
+          if (!r.ok) throw new Error('菜谱清单加载失败');
+          return r.json();
+        });
+    source
       .then((data: Manifest) => {
         if (!controller.signal.aborted) setManifest(data);
       })
       .catch((e) => {
-        if (e.name !== 'AbortError') setError(e.message);
+        if (!controller.signal.aborted && e.name !== 'AbortError') setError(e.message);
       });
     return () => controller.abort();
-  }, []);
+  }, [cloud.ready, cloud.config.enabled, cloud.api, catalogAttempt]);
   useEffect(() => {
     const update = () => {
       setRoute(parseRoute(location.hash || '#/home'));
@@ -100,22 +115,26 @@ function Application() {
       return;
     }
     const controller = new AbortController();
-    fetch(assetUrl(`data/recipes/${encodeURIComponent(route.id)}.json`), {
-      signal: controller.signal,
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error('菜谱详情加载失败');
-        return r.json();
-      })
+    const source = manifest.cloud
+      ? cloud.api<RecipeDetail>(`recipes/${encodeURIComponent(route.id)}`, {
+          signal: controller.signal,
+        })
+      : fetch(assetUrl(`data/recipes/${encodeURIComponent(route.id)}.json`), {
+          signal: controller.signal,
+        }).then((r) => {
+          if (!r.ok) throw new Error('菜谱详情加载失败');
+          return r.json();
+        });
+    source
       .then((data: RecipeDetail) => {
         if (data.id !== route.id) throw new Error('菜谱详情与请求不一致，请重新加载');
         if (!controller.signal.aborted) setDetail(data);
       })
       .catch((e) => {
-        if (e.name !== 'AbortError') setDetailError(e.message);
+        if (!controller.signal.aborted && e.name !== 'AbortError') setDetailError(e.message);
       });
     return () => controller.abort();
-  }, [route.id, route.page, manifest, detailAttempt]);
+  }, [route.id, route.page, manifest, detailAttempt, cloud.api]);
   useEffect(() => {
     if (route.page !== 'recipe' && route.page !== 'cook') {
       lastVisit.current = '';
@@ -140,12 +159,12 @@ function Application() {
   useEffect(() => {
     document.title = detail ? `${detail.name} · 灶台笔记` : '灶台笔记 · 今天做点好吃的';
   }, [detail]);
-  if (error)
+  if (error || cloud.error)
     return (
       <div className="startup-state">
         <ChefHat size={40} />
         <h1>菜谱暂时没有加载成功</h1>
-        <p>{error}</p>
+        <p>{error || cloud.error}</p>
         <button className="button primary" onClick={() => location.reload()}>
           重新加载
         </button>
@@ -223,27 +242,52 @@ function Application() {
             浏览器存储不可用，收藏与浏览记录暂存于当前页面，关闭后可能丢失。
           </p>
         )}
-        {route.page === 'home' ? (
-          <Home manifest={manifest} route={route} navigate={navigate} />
-        ) : route.page === 'library' || route.page === 'favorites' || route.page === 'recent' ? (
-          <Library
-            manifest={manifest}
-            route={route}
-            navigate={navigate}
-            openSidebar={openSidebar}
-          />
-        ) : route.page === 'add' ? (
-          <AddRecipe route={route} />
-        ) : (
-          detailContent
-        )}
+        <Suspense fallback={<p className="notice">正在打开小厨房…</p>}>
+          {route.page === 'account' ? (
+            <Account />
+          ) : route.page === 'requests' ? (
+            <Requests manifest={manifest} initialId={route.id} />
+          ) : route.page === 'admin' ? (
+            <Admin onChanged={() => setCatalogAttempt((n) => n + 1)} />
+          ) : route.page === 'home' ? (
+            <Home manifest={manifest} route={route} navigate={navigate} />
+          ) : route.page === 'library' || route.page === 'favorites' || route.page === 'recent' ? (
+            <Library
+              manifest={manifest}
+              route={route}
+              navigate={navigate}
+              openSidebar={openSidebar}
+            />
+          ) : route.page === 'add' ? (
+            cloud.config.enabled ? (
+              <section className="cloud-page">
+                <header>
+                  <h1>{cloud.admin ? '新增菜谱' : '分享你的拿手菜'}</h1>
+                  <p>{cloud.admin ? '在这里保存草稿或直接发布。' : '提交后由管理员审核发布。'}</p>
+                </header>
+                <RecipeEditor
+                  key={cloud.session?.user.id ?? 'visitor'}
+                  submission={!cloud.admin}
+                  onSaved={() => {
+                    setCatalogAttempt((n) => n + 1);
+                    if (cloud.admin) navigate({ ...route, page: 'admin', id: undefined });
+                  }}
+                />
+              </section>
+            ) : (
+              <AddRecipe route={route} />
+            )
+          ) : (
+            detailContent
+          )}
+        </Suspense>
       </main>
       <div className="feedback-region" role="status" aria-live="polite">
         {notice && (
           <div className="feedback-toast">
             <span>
               {notice}
-              {temporary ? '（本次页面有效）' : '（仅此浏览器）'}
+              {temporary ? '（本次页面有效）' : cloud.config.enabled ? '' : '（仅此浏览器）'}
             </span>
             <button className="icon-button" aria-label="关闭提示" onClick={dismiss}>
               <X size={18} />

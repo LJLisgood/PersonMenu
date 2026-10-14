@@ -20,6 +20,7 @@ export type RecipeDetail = Recipe & {
   sourceUrl: string | null;
 };
 export type Manifest = {
+  cloud?: boolean;
   schemaVersion: number;
   revision: string;
   recipes: Recipe[];
@@ -37,7 +38,17 @@ export type Filters = {
   exclude: string;
 };
 export type Route = {
-  page: 'home' | 'library' | 'favorites' | 'recent' | 'recipe' | 'cook' | 'add';
+  page:
+    | 'home'
+    | 'library'
+    | 'favorites'
+    | 'recent'
+    | 'recipe'
+    | 'cook'
+    | 'add'
+    | 'account'
+    | 'requests'
+    | 'admin';
   from?: 'home' | 'library' | 'favorites' | 'recent';
   sort?: 'name' | 'time' | 'difficulty';
   id?: string;

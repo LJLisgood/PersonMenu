@@ -1,5 +1,5 @@
 import MiniSearch from 'minisearch';
-import { searchOptions, queryRecipes } from '../scripts/search.mjs';
+import { searchOptions, queryRecipes, buildIndex } from '../scripts/search.mjs';
 import type { Filters, Recipe } from './types';
 let search: MiniSearch | null = null;
 let recipes: Recipe[] = [];
@@ -16,7 +16,9 @@ self.onmessage = async (
   try {
     if (type === 'init') {
       recipes = event.data.recipes!;
-      search = MiniSearch.loadJSON(event.data.index!, searchOptions);
+      search = event.data.index
+        ? MiniSearch.loadJSON(event.data.index, searchOptions)
+        : buildIndex(recipes);
       self.postMessage({ type: 'ready' });
     } else if (search) {
       const start = performance.now();

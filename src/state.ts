@@ -32,7 +32,10 @@ export function parseRoute(hash: string): Route {
       page === 'add' ||
       page === 'home' ||
       page === 'favorites' ||
-      page === 'recent'
+      page === 'recent' ||
+      page === 'account' ||
+      page === 'requests' ||
+      page === 'admin'
         ? page
         : 'library',
     ...(params.get('from') &&
@@ -56,7 +59,11 @@ export function routeHash(route: Route): string {
   return `#/${route.page === 'library' ? '' : route.page}${route.id ? '/' + encodeURIComponent(route.id) : ''}${params.size ? '?' + params.toString() : ''}`;
 }
 export const assetUrl = (value: string | null | undefined): string =>
-  value ? `${import.meta.env.BASE_URL}${value.replace(/^\.\//, '')}` : '';
+  value
+    ? value.startsWith('/api/media/')
+      ? value
+      : `${import.meta.env.BASE_URL}${value.replace(/^\.\//, '')}`
+    : '';
 export function cookRemaining(endAt: number | null, now = Date.now()) {
   return endAt === null ? 0 : Math.max(0, Math.ceil((endAt - now) / 1000));
 }

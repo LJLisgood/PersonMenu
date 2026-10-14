@@ -61,13 +61,14 @@ export function RecipeImage({
   );
 }
 export function FavoriteButton({ recipe, compact = false }: { recipe: Recipe; compact?: boolean }) {
-  const { saved, toggle } = usePersonal();
+  const { saved, toggle, syncing } = usePersonal();
   const active = saved.favorites.includes(recipe.id);
   return (
     <button
       className={`favorite-button ${compact ? 'compact' : 'button subtle'} ${active ? 'is-saved' : ''}`}
       aria-label={`${active ? '取消收藏' : '收藏'}${recipe.name}`}
       aria-pressed={active}
+      disabled={syncing}
       onClick={() => toggle(recipe.id, recipe.name)}
     >
       <Heart size={19} fill={active ? 'currentColor' : 'none'} />

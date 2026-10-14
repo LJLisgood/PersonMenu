@@ -5,6 +5,11 @@ public/media/
 *.tsbuildinfo
 .DS_Store
 .env*
+.dev.vars*
+!.dev.vars.example
+.wrangler/
+.cloud/
+supabase/.temp/
 
 # Local tooling and private configuration
 .idea/

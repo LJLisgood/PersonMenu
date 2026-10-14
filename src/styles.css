@@ -2872,3 +2872,208 @@ select,
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* Online kitchen pages share the existing reading and color tokens. */
+.cloud-page {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 42px 0 72px;
+}
+.cloud-page.narrow {
+  max-width: 650px;
+}
+.cloud-page > header {
+  margin-bottom: 28px;
+}
+.cloud-page h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  margin: 7px 0 12px;
+}
+.cloud-page h2 {
+  font-size: 23px;
+  margin-bottom: 12px;
+}
+.cloud-page > header p,
+.cloud-hint {
+  color: var(--muted);
+}
+.cloud-panel,
+.cloud-form {
+  padding: 26px;
+  margin: 22px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fffefa;
+}
+.cloud-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.cloud-form label,
+.cloud-actions label,
+.review-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cloud-form small {
+  color: var(--muted);
+  font-weight: 400;
+}
+.cloud-form input,
+.cloud-form select,
+.cloud-form textarea,
+.review-card input,
+.review-card select {
+  width: 100%;
+}
+.cloud-form textarea {
+  resize: vertical;
+  color: inherit;
+  background: white;
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 6px;
+}
+.cloud-form textarea:focus {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.recipe-source,
+.submitted-source {
+  font-family: ui-monospace, 'PingFang SC', monospace;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.submitted-source {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow: auto;
+}
+.form-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.form-columns.thirds {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.cloud-actions,
+.cloud-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cloud-tabs {
+  margin: 20px 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+.cloud-tabs button {
+  padding: 9px 15px;
+  border-radius: 6px;
+  min-height: 44px;
+}
+.cloud-tabs button[aria-pressed='true'] {
+  background: var(--green);
+  color: white;
+}
+.cloud-actions > label {
+  margin-left: auto;
+}
+.cloud-nav {
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.dish-picker {
+  max-height: 280px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  border: 1px solid var(--border);
+  padding: 14px;
+  border-radius: 7px;
+}
+.dish-picker label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+}
+.dish-picker input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--green);
+}
+.request-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.request-row p {
+  margin-top: 5px;
+  color: var(--muted);
+}
+.state-pill {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 30px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.review-card {
+  border-bottom: 1px solid var(--border);
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.review-card > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.review-card > button {
+  align-self: flex-start;
+}
+.cloud-page .notice {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .cloud-page {
+    padding: 24px 0 50px;
+  }
+  .cloud-panel,
+  .cloud-form {
+    padding: 18px;
+  }
+  .form-columns,
+  .form-columns.thirds {
+    grid-template-columns: 1fr;
+  }
+  .dish-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .request-row {
+    flex-direction: column;
+  }
+  .cloud-actions > label {
+    margin-left: 0;
+    width: 100%;
+  }
+}

@@ -1,0 +1,13 @@
+# Copy to .dev.vars. This file is for local development and import/export only.
+# Never put the service role or Resend key in a VITE_* variable.
+SUPABASE_URL="https://YOUR_PROJECT_REF.supabase.co"
+SUPABASE_PUBLISHABLE_KEY=""
+SUPABASE_SERVICE_ROLE_KEY=""
+APP_ORIGIN="http://localhost:8788"
+ALLOW_WRITES="true"
+TURNSTILE_SITE_KEY=""
+TURNSTILE_SECRET_KEY=""
+RESEND_API_KEY=""
+MAIL_FROM="灶台笔记 <notify@auth.jerrystack.org>"
+ADMIN_EMAIL=""
+R2_BUCKET_NAME="jerry"

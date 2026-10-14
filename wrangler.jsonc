@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "personmenu",
+  "account_id": "2786d22168d412fe718b67df7d2271d1",
+  "main": "server/worker.ts",
+  "compatibility_date": "2026-10-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+  },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api", "/api/*"],
+  },
+  "vars": {
+    "SUPABASE_URL": "https://xqdddxiqqskgocilrxpx.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_1npHS3_NeY0X91JISsorvQ_KVEwsYiy",
+    "APP_ORIGIN": "https://psmenu.jerrystack.org",
+    "ALLOW_WRITES": "false",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFWc5ftFgBygEDHq",
+    "MAIL_FROM": "灶台笔记 <notify@auth.jerrystack.org>",
+  },
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "jerry" }],
+}

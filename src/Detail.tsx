@@ -14,7 +14,9 @@ import type { RecipeDetail, Route } from './types';
 import { routeHash, returnRoute } from './state';
 import { Difficulty, FavoriteButton, RecipeImage } from './RecipeCard';
 import { Markdown } from './Markdown';
+import { useCloud } from './Cloud';
 export function Detail({ recipe, route }: { recipe: RecipeDetail; route: Route }) {
+  const cloud = useCloud();
   const [large, setLarge] = useState(false);
   const [original, setOriginal] = useState(!recipe.steps.length);
   const [message, setMessage] = useState('');
@@ -97,13 +99,25 @@ export function Detail({ recipe, route }: { recipe: RecipeDetail; route: Route }
             </div>
           )}
           <div className="detail-actions">
+            {cloud.config.enabled && (
+              <a
+                className="button subtle"
+                href={routeHash({ ...route, page: 'requests', id: recipe.id })}
+              >
+                我想吃这道
+              </a>
+            )}
             <a className="button primary" href={routeHash({ ...route, page: 'cook' })}>
               <ChefHat size={19} />
               开始做这道菜
             </a>
             <FavoriteButton recipe={recipe} />
           </div>
-          <small className="local-hint">收藏与步骤标记仅保存在当前浏览器。</small>
+          <small className="local-hint">
+            {cloud.session && !cloud.session.user.is_anonymous
+              ? '收藏同步至当前账号；步骤标记保存在当前浏览器。'
+              : '收藏与步骤标记仅保存在当前浏览器。'}
+          </small>
         </div>
       </header>
       <div className="detail-source">

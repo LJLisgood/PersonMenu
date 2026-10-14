@@ -1,6 +1,8 @@
 # 灶台笔记 · 本地菜谱站
 
-React + TypeScript + Vite 的纯静态菜谱库。菜谱与图片都在本地项目文件中；运行时没有后端、数据库、云存储、账号或 AI 服务。网页可全文搜索、按拼音检索、组合筛选，并提供分步烹饪、备料勾选和厨房计时。
+React + TypeScript + Vite 菜谱库，支持本地文件模式和 Cloudflare Workers 云端模式。网页可全文搜索、按拼音检索、组合筛选，并提供分步烹饪、备料勾选和厨房计时。云端模式增加在线菜谱管理、邮箱密码登录、游客点菜与投稿、管理员审核、R2 照片、账号收藏和 Resend 邮件通知。
+
+云端部署沿用现有 `personmenu` Worker 的静态资源服务和同站点 API，无需租用常驻服务器。**配置获取入口、每个变量的填写位置、SQL 执行顺序、首次导入、管理员授权和生产发布步骤见 [DEPLOYMENT.md](DEPLOYMENT.md)。** 云端数据以 Supabase 为准；未配置云端服务时，以下本地文件工作流仍可使用。
 
 [MIT License](LICENSE) · [贡献指南](CONTRIBUTING.md) · [问题反馈](https://github.com/LJLisgood/PersonMenu/issues)
 

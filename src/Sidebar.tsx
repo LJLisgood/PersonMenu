@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import type { Manifest, Route } from './types';
+import { useCloud } from './Cloud';
 const icons: Record<string, typeof Leaf> = {
   素菜: Leaf,
   荤菜: Beef,
@@ -48,6 +49,7 @@ export function Sidebar({
   close: () => void;
   favoriteCount: number;
 }) {
+  const cloud = useCloud();
   const panel = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -162,6 +164,48 @@ export function Sidebar({
             最近浏览
           </button>
         </nav>
+        {cloud.config.enabled && (
+          <nav className="primary-nav cloud-nav" aria-label="小厨房互动">
+            <button
+              className={route.page === 'requests' ? 'active' : ''}
+              onClick={() => {
+                navigate({ ...route, page: 'requests', id: undefined });
+                close();
+              }}
+            >
+              点菜与投稿
+            </button>
+            <button
+              className={route.page === 'add' ? 'active' : ''}
+              onClick={() => {
+                navigate({ ...route, page: 'add', id: undefined });
+                close();
+              }}
+            >
+              {cloud.admin ? '新增菜谱' : '分享菜谱'}
+            </button>
+            <button
+              className={route.page === 'account' ? 'active' : ''}
+              onClick={() => {
+                navigate({ ...route, page: 'account', id: undefined });
+                close();
+              }}
+            >
+              {cloud.session && !cloud.session.user.is_anonymous ? '我的账号' : '登录 / 注册'}
+            </button>
+            {cloud.admin && (
+              <button
+                className={route.page === 'admin' ? 'active' : ''}
+                onClick={() => {
+                  navigate({ ...route, page: 'admin', id: undefined });
+                  close();
+                }}
+              >
+                管理员工作台
+              </button>
+            )}
+          </nav>
+        )}
         <div className="sidebar-section">
           <span>分类 · 全库数量</span>
           <nav>
