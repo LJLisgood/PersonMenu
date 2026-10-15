@@ -11,3 +11,7 @@ RESEND_API_KEY=""
 MAIL_FROM="灶台笔记 <notify@auth.jerrystack.org>"
 ADMIN_EMAIL=""
 R2_BUCKET_NAME="personmenu-media"
+
+# Server-only AI credentials. Never use a VITE_ prefix.
+DEEPSEEK_API_KEY=""
+DEEPSEEK_MODEL="deepseek-flash"

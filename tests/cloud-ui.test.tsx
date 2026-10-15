@@ -353,3 +353,50 @@ it('重新编辑生成的菜谱继续显示分项表单，编辑复杂旧原文�
   await waitFor(() => expect(fixture.state.api).toHaveBeenCalled());
   expect(JSON.parse(fixture.state.api.mock.calls[0][1].body).document.original).toBe(legacy);
 });
+
+it('AI 整理时显示 ThoughtLine，成功填表但不保存，失败保留已有内容', async () => {
+  fixture.state.admin = true;
+  let resolve!: (value: unknown) => void;
+  fixture.state.api = vi.fn(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+  );
+  const saved = vi.fn();
+  render(<RecipeEditor catalog={manifest} onSaved={saved} />);
+  fireEvent.change(screen.getByLabelText('粘贴菜谱原文'), { target: { value: '鸡蛋2个炒熟' } });
+  fireEvent.click(screen.getByRole('button', { name: 'AI 整理并填入' }));
+  expect(screen.getByRole('button', { name: /正在整理菜谱/ })).toBeTruthy();
+  expect(
+    (screen.getByLabelText('菜名') as HTMLInputElement).disabled ||
+      screen.getByLabelText('菜名').closest('fieldset')?.disabled,
+  ).toBe(true);
+  resolve({
+    name: '炒蛋',
+    category: '家常菜',
+    description: '',
+    tags: [],
+    ingredients: '鸡蛋 2 个',
+    steps: ['炒熟'],
+    notes: '',
+    difficulty: null,
+    totalMinutes: null,
+    servings: null,
+    warnings: ['请核对用盐量'],
+  });
+  await waitFor(() =>
+    expect((screen.getByLabelText('菜名') as HTMLInputElement).value).toBe('炒蛋'),
+  );
+  expect(screen.getByText('请核对用盐量')).toBeTruthy();
+  expect(saved).not.toHaveBeenCalled();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  fixture.state.api = vi.fn(async () => {
+    throw new Error('AI 整理失败');
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'AI 整理并填入' }));
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('AI 整理失败'));
+  expect((screen.getByLabelText('菜名') as HTMLInputElement).value).toBe('炒蛋');
+  expect(screen.queryByRole('button', { name: /整理完成，用时/ })).toBeNull();
+  vi.restoreAllMocks();
+});

@@ -133,3 +133,11 @@ Markdown 在构建时转成经过 sanitize 的 HTML，原始 HTML 不执行。�
 `content/howtocook/` 来自 [Anduin2017/HowToCook](https://github.com/Anduin2017/HowToCook)，保留其 [Unlicense](content/howtocook/LICENSE)、原文及来源记录；该目录不由本项目 MIT 许可证重新授权。感谢原项目及所有菜谱贡献者。第三方依赖遵循各自许可证。
 
 向本仓库贡献内容时，请确保你有权公开所提交的文字和图片，并同意原创贡献按本项目许可证发布。不要提交私人菜谱、无授权照片或敏感信息。
+
+### DeepSeek 菜谱整理（可选）
+
+管理员新增菜谱时可粘贴 OCR 文字或零散做法，点击「AI 整理并填入」。请求期间显示 ThoughtLine 进度与计时；成功后填入可编辑表单，仍需人工核对并保存。缺失信息保持为空，失败不会覆盖原有内容。
+
+在本地 `.dev.vars` 设置 `DEEPSEEK_API_KEY`，线上使用 `npx wrangler secret put DEEPSEEK_API_KEY`。可选服务端变量 `DEEPSEEK_MODEL` 默认 `deepseek-flash`。密钥不得放入 `VITE_*` 或提交到仓库。本地完整功能使用 `npm run build:cloud` 后运行 `npm run dev:cloud`。
+
+原文将发送给 DeepSeek。一次仅整理一道菜，最多 15000 字，每管理员每个 15 分钟窗口最多 10 次；请求超时 60 秒，不自动重试。API 费用及模型可用性以 DeepSeek 账户为准。参考 [DeepSeek JSON Output 文档](https://api-docs.deepseek.com/guides/json_mode)。

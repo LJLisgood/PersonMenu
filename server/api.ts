@@ -1,3 +1,4 @@
+import { organizeRecipe } from './recipeAi';
 import { prepareRecipe, text } from '../shared/recipe';
 import type { KitchenRequest, Notification, RecipeRecord, RequestState } from '../shared/cloud';
 import type { RecipeDetail } from '../src/types';
@@ -7,6 +8,8 @@ export type Env = {
   SUPABASE_PUBLISHABLE_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   RESEND_API_KEY?: string;
+  DEEPSEEK_API_KEY?: string;
+  DEEPSEEK_MODEL?: string;
   MAIL_FROM?: string;
   ADMIN_EMAIL?: string;
   APP_ORIGIN?: string;
@@ -618,6 +621,45 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json({ id, url: `/api/media/${id}` }, 201);
     }
     if (path[0] !== 'admin' || !auth.admin) throw new ApiError(403, '仅管理员可以执行此操作');
+    if (path.length === 2 && path[1] === 'recipe-assist' && method === 'POST') {
+      if (!env.DEEPSEEK_API_KEY) throw new ApiError(503, '尚未配置 DeepSeek API，请联系管理员');
+      const input = await body(request);
+      if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 15000)
+        throw new ApiError(400, '请输入 1 至 15000 字的菜谱原文');
+      if (
+        !Array.isArray(input.categories) ||
+        input.categories.length > 100 ||
+        input.categories.some((c) => typeof c !== 'string' || !c || c.length > 100)
+      )
+        throw new ApiError(400, '菜谱分类无效');
+      if (
+        !(await rpc(env, 'kitchen_rate_limit', { p_key: `recipe-ai:${auth.user.id}`, p_limit: 10 }))
+      )
+        throw new ApiError(429, 'AI 整理过于频繁，请稍后再试');
+      try {
+        return json(
+          await organizeRecipe(
+            env.DEEPSEEK_API_KEY,
+            env.DEEPSEEK_MODEL || 'deepseek-flash',
+            input.text.trim(),
+            input.categories as string[],
+          ),
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          (error.name === 'TimeoutError' || error.name === 'AbortError')
+        )
+          throw new ApiError(504, 'AI 整理超时，请稍后重试，原有表单未更改');
+        throw new ApiError(
+          502,
+          (error instanceof Error && error.message.startsWith('AI')) ||
+          (error instanceof Error && error.message.startsWith('DeepSeek'))
+            ? (error as Error).message
+            : 'AI 整理暂时失败，请稍后重试',
+        );
+      }
+    }
     if (path[1] === 'recipes' && method === 'GET')
       return json(
         await database(env, `recipes?order=id&limit=100&offset=${page * 100}`, {}, auth.token),

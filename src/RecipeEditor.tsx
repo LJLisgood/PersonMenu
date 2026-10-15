@@ -1,4 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import ThoughtLine from './ThoughtLine';
+import { validateAiDraft } from '../shared/recipeAi';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useCloud } from './Cloud';
 import { useCaptcha } from './Captcha';
 import { prepareRecipe } from '../shared/recipe';
@@ -56,6 +58,72 @@ export function RecipeEditor({
     [preview, setPreview] = useState<RecipeDetail | null>(null),
     [state, setState] = useState(record?.state ?? 'draft');
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const [aiText, setAiText] = useState('');
+  const [aiStatus, setAiStatus] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
+  const [aiError, setAiError] = useState('');
+  const [aiWarnings, setAiWarnings] = useState<string[]>([]);
+  const aiRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => aiRequest.current?.abort(), []);
+  const aiWorking = aiStatus === 'working';
+  const organize = async () => {
+    if (busy || aiRequest.current || !aiText.trim()) return;
+    if (
+      (name ||
+        category ||
+        description ||
+        ingredients ||
+        steps.some((s) => s.text) ||
+        notes ||
+        tags.length ||
+        tagInput ||
+        difficulty ||
+        minutes ||
+        servings) &&
+      !window.confirm('AI 整理结果会替换下方文字字段，已上传照片会保留。继续吗？')
+    )
+      return;
+    const controller = new AbortController();
+    aiRequest.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 70000);
+    setAiStatus('working');
+    setAiError('');
+    setAiWarnings([]);
+    try {
+      const result = await cloud.api<unknown>('admin/recipe-assist', {
+        method: 'POST',
+        body: JSON.stringify({ text: aiText, categories: options }),
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      const draft = validateAiDraft(result, options);
+      setName(draft.name);
+      setCategory(draft.category);
+      setDescription(draft.description);
+      setTags(draft.tags);
+      setTagInput('');
+      setIngredients(draft.ingredients);
+      setSteps(draft.steps.map((text) => ({ id: crypto.randomUUID(), text })));
+      setNotes(draft.notes);
+      setDifficulty(draft.difficulty?.toString() ?? '');
+      setMinutes(draft.totalMinutes?.toString() ?? '');
+      setServings(draft.servings?.toString() ?? '');
+      setAiWarnings(draft.warnings);
+      setPreview(null);
+      setAiStatus('done');
+    } catch (error) {
+      setAiStatus('error');
+      setAiError(
+        controller.signal.aborted
+          ? '整理已超时或取消，原有表单未更改。'
+          : error instanceof Error
+            ? error.message
+            : '整理失败，请重试',
+      );
+    } finally {
+      window.clearTimeout(timeout);
+      aiRequest.current = null;
+    }
+  };
   const formMarkdown = () =>
     recipeFormMarkdown({ ingredients, steps: steps.map((step) => step.text), notes, photos });
   const document = () => {
@@ -77,7 +145,7 @@ export function RecipeEditor({
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (busy) return;
+    if (busy || aiWorking) return;
     setBusy(true);
     setNotice('');
     try {
@@ -150,7 +218,54 @@ export function RecipeEditor({
   };
   return (
     <form className="cloud-form" onSubmit={submit}>
-      <fieldset className="recipe-editor-fields" disabled={busy}>
+      {!submission && !value && cloud.admin && (
+        <section className="recipe-ai" aria-label="AI 整理菜谱" aria-busy={aiWorking}>
+          <label>
+            粘贴菜谱原文
+            <textarea
+              rows={7}
+              maxLength={15000}
+              value={aiText}
+              disabled={busy || aiWorking}
+              placeholder="把 OCR 识别文字、食材用量和零散做法粘贴在这里，一次整理一道菜。"
+              onChange={(e) => setAiText(e.target.value)}
+            />
+          </label>
+          <small>点击整理后，原文会发送给 DeepSeek。缺失信息会留空，填入后请核对用量再保存。</small>
+          <div>
+            <button
+              type="button"
+              className="button subtle"
+              disabled={busy || aiWorking || !aiText.trim()}
+              onClick={() => void organize()}
+            >
+              {aiWorking ? '正在整理…' : 'AI 整理并填入'}
+            </button>
+          </div>
+          {(aiStatus === 'working' || aiStatus === 'done') && (
+            <ThoughtLine
+              working={aiWorking}
+              steps={
+                aiWorking
+                  ? ['原文已准备', '正在请求 AI 整理并校验结果']
+                  : ['原文已准备', '整理结果已校验', '已填入表单，请核对后保存']
+              }
+            />
+          )}
+          {aiStatus === 'error' && <p role="alert">{aiError}</p>}
+          {aiWarnings.length > 0 && (
+            <div role="status">
+              <strong>请核对</strong>
+              <ul>
+                {aiWarnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+      <fieldset className="recipe-editor-fields" disabled={busy || aiWorking}>
         <div className="form-columns">
           <label>
             菜名
@@ -240,7 +355,7 @@ export function RecipeEditor({
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            disabled={busy}
+            disabled={busy || aiWorking}
             onChange={(e) => {
               void upload(e.target.files?.[0]);
               e.target.value = '';
@@ -342,13 +457,13 @@ export function RecipeEditor({
       </fieldset>
       <div ref={captcha.element} />
       <div className="cloud-actions">
-        <button type="submit" className="button primary" disabled={busy}>
+        <button type="submit" className="button primary" disabled={busy || aiWorking}>
           {busy ? '正在处理…' : submission ? '提交审核' : '保存菜谱'}
         </button>
         <button
           type="button"
           className="button subtle"
-          disabled={busy}
+          disabled={busy || aiWorking}
           onClick={() => {
             try {
               void prepareRecipe(document(), record?.id ?? 'preview', record?.document)
