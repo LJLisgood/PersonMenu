@@ -3103,6 +3103,102 @@ select,
   max-height: 360px;
   overflow: auto;
 }
+.recipe-editor-fields,
+.recipe-tag-picker,
+.recipe-step-editor {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.recipe-editor-fields,
+.recipe-form-sections,
+.recipe-step-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.recipe-tag-picker legend,
+.recipe-step-editor legend {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding: 0;
+}
+.recipe-tag-picker {
+  display: grid;
+  gap: 10px;
+}
+.recipe-tag-input,
+.recipe-selected-tags,
+.recipe-tag-suggestions,
+.recipe-step-heading,
+.recipe-step-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.recipe-tag-input input {
+  flex: 1;
+  width: 0;
+}
+.recipe-selected-tags,
+.recipe-tag-suggestions {
+  flex-wrap: wrap;
+}
+.recipe-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--color-brand-100);
+  color: var(--green);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.recipe-tag-suggestions .button {
+  padding: 7px 11px;
+  min-height: 40px;
+  font-size: 13px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.recipe-step-field {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+.recipe-step-heading {
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.recipe-step-editor > .button {
+  align-self: flex-start;
+}
+.recipe-form-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+}
+.recipe-generated-source summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+}
+.recipe-generated-source pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 300px;
+  overflow: auto;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--color-surface-soft);
+  font-size: 13px;
+}
 .form-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

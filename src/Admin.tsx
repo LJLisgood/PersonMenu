@@ -10,8 +10,14 @@ import {
   type RecipeRecord,
   type RequestState,
 } from '../shared/cloud';
-import type { RecipeDetail } from './types';
-export function Admin({ onChanged }: { onChanged: () => void }) {
+import type { Manifest, RecipeDetail } from './types';
+export function Admin({
+  onChanged,
+  catalog,
+}: {
+  onChanged: () => void;
+  catalog: Pick<Manifest, 'categories' | 'tags'>;
+}) {
   const cloud = useCloud();
   const [tab, setTab] = useState<'requests' | 'recipes' | 'notifications'>('requests');
   const [requests, setRequests] = useState<KitchenRequest[]>([]),
@@ -112,6 +118,7 @@ export function Admin({ onChanged }: { onChanged: () => void }) {
       {tab === 'recipes' ? (
         editing ? (
           <RecipeEditor
+            catalog={catalog}
             key={editing === 'new' ? `new-${draft?.id ?? ''}` : editing.id}
             record={editing === 'new' ? undefined : editing}
             initial={draft}

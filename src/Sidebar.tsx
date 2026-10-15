@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { Manifest, Route } from './types';
 import { useCloud } from './Cloud';
+import { sortedCategories } from './categories';
 const icons: Record<string, typeof Leaf> = {
   素菜: Leaf,
   荤菜: Beef,
@@ -33,7 +34,6 @@ const icons: Record<string, typeof Leaf> = {
   调味料: SlidersHorizontal,
   半成品: Package,
 };
-const order = ['素菜', '荤菜', '水产', '早餐', '主食', '汤', '甜品', '饮品', '调味料', '半成品'];
 export function Sidebar({
   manifest,
   route,
@@ -88,11 +88,7 @@ export function Sidebar({
     });
     close();
   };
-  const categories = Object.keys(manifest.categories).sort(
-    (a, b) =>
-      (order.indexOf(a) < 0 ? 99 : order.indexOf(a)) -
-      (order.indexOf(b) < 0 ? 99 : order.indexOf(b)),
-  );
+  const categories = sortedCategories(Object.keys(manifest.categories));
   return (
     <>
       {open && (

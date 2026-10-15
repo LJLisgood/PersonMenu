@@ -9,6 +9,8 @@ import { AccountBar } from '../src/AccountBar';
 import { PhotoUpload } from '../src/PhotoUpload';
 import { Detail } from '../src/Detail';
 import { emptyFilters } from '../src/state';
+import { prepareRecipe } from '../shared/recipe';
+import { recipeFormMarkdown } from '../src/recipeForm';
 import type { Manifest } from '../src/types';
 const fixture = vi.hoisted(() => ({
   state: {} as Record<string, any>,
@@ -229,7 +231,7 @@ it('失败后重试同一份点菜复用编号', async () => {
   expect(ids[0]).toBe(ids[1]);
 });
 it('普通用户不能打开管理工具', () => {
-  render(<Admin onChanged={() => {}} />);
+  render(<Admin catalog={manifest} onChanged={() => {}} />);
   expect(screen.getByText('请使用已授权的管理员账号登录。')).toBeTruthy();
   expect(screen.queryByRole('button', { name: '新增菜谱' })).toBeNull();
 });
@@ -237,6 +239,7 @@ it('管理员保存使用原记录版本，缺失数值不会被补为默认份�
   const changed = vi.fn();
   render(
     <RecipeEditor
+      catalog={manifest}
       record={{
         id: 'one',
         document: {
@@ -265,4 +268,88 @@ it('管理员保存使用原记录版本，缺失数值不会被补为默认份�
   expect(data.revision).toBe(7);
   expect(data.document.servings).toBeNull();
   expect(data.document.difficulty).toBeNull();
+});
+
+const editorCatalog = {
+  categories: { 荤菜: 1, 素菜: 1, 主食: 1 },
+  tags: ['少油', '快手菜', '家常菜'],
+};
+function fillRecipeForm() {
+  fireEvent.change(screen.getByLabelText('菜名'), { target: { value: '番茄炒蛋' } });
+  fireEvent.change(screen.getByLabelText('分类'), { target: { value: '荤菜' } });
+  fireEvent.change(screen.getByLabelText(/食材与用量/), {
+    target: { value: '番茄 2 个\n鸡蛋 3 个' },
+  });
+  fireEvent.change(screen.getByLabelText('步骤 1'), { target: { value: '先切番茄。' } });
+}
+it('分类沿用侧栏顺序，标签可选已有项和新增，输入法确认不会误加标签或提交', async () => {
+  const saved = vi.fn();
+  render(<RecipeEditor catalog={editorCatalog} onSaved={saved} />);
+  expect(
+    [...(screen.getByLabelText('分类') as HTMLSelectElement).options].map((o) => o.value),
+  ).toEqual(['', '素菜', '荤菜', '主食']);
+  fillRecipeForm();
+  fireEvent.click(screen.getByRole('button', { name: '少油', exact: true }));
+  const input = screen.getByLabelText('选择或新增标签');
+  fireEvent.change(input, { target: { value: '家常新标签' } });
+  fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+  expect(screen.queryByRole('button', { name: '移除标签家常新标签' })).toBeNull();
+  expect(fixture.state.api).not.toHaveBeenCalled();
+  fireEvent.keyDown(input, { key: 'Enter', isComposing: false });
+  fireEvent.change(input, { target: { value: '未点添加的标签' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存菜谱' }));
+  await waitFor(() => expect(saved).toHaveBeenCalledOnce());
+  const data = JSON.parse(fixture.state.api.mock.calls[0][1].body);
+  expect(data.document.tags).toEqual(['少油', '家常新标签', '未点添加的标签']);
+  expect(data.document.category).toBe('荤菜');
+});
+it('游客逐项填写、调整步骤顺序后提交，生成的原文能被真实解析器读取', async () => {
+  const guest = { user: { id: 'guest', is_anonymous: true } };
+  fixture.state.session = guest;
+  fixture.state.ensureGuest = vi.fn(async () => guest);
+  fixture.state.api = vi.fn(async () => ({ notification: 'pending' }));
+  render(<RecipeEditor catalog={editorCatalog} submission onSaved={() => {}} />);
+  fillRecipeForm();
+  fireEvent.click(screen.getByRole('button', { name: '添加一步' }));
+  fireEvent.change(screen.getByLabelText('步骤 2'), { target: { value: '再炒鸡蛋。' } });
+  fireEvent.click(screen.getByRole('button', { name: '上移步骤 2' }));
+  fireEvent.change(screen.getByLabelText('小贴士（可选）'), { target: { value: '少放盐。' } });
+  fireEvent.change(screen.getByLabelText('你的昵称'), { target: { value: '亲友' } });
+  fireEvent.click(screen.getByRole('button', { name: '提交审核' }));
+  await screen.findByText(/投稿已保存/);
+  const [path, options] = fixture.state.api.mock.calls[0];
+  const data = JSON.parse(options.body);
+  expect(path).toBe('requests');
+  expect(data.kind).toBe('submission');
+  expect(data.captcha).toBe('captcha-token');
+  const recipe = await prepareRecipe(data.payload.recipe, 'candidate');
+  expect(recipe.ingredients).toEqual(['番茄 2 个', '鸡蛋 3 个']);
+  expect(recipe.steps.map((s) => s.text)).toEqual(['再炒鸡蛋。', '先切番茄。']);
+  expect(recipe.supporting.some((s) => s.name === '小贴士')).toBe(true);
+});
+it('重新编辑生成的菜谱继续显示分项表单，编辑复杂旧原文时保留全文和既有分类', async () => {
+  const original = recipeFormMarkdown({
+    ingredients: '鸡蛋 3 个',
+    steps: ['炒熟。'],
+    notes: '',
+    photos: [],
+  });
+  const recipe = { ...detail(), original, category: '旧分类' };
+  const view = render(<RecipeEditor catalog={editorCatalog} initial={recipe} onSaved={() => {}} />);
+  expect((screen.getByLabelText('步骤 1') as HTMLTextAreaElement).value).toBe('炒熟。');
+  expect((screen.getByLabelText('分类') as HTMLSelectElement).value).toBe('旧分类');
+  const legacy = '---\nname: 原菜谱\n---\n## 步骤\n1. 翻炒。\n   - 注意火候\n\n$$ x=1 $$';
+  view.unmount();
+  render(
+    <RecipeEditor
+      catalog={editorCatalog}
+      initial={{ ...recipe, original: legacy }}
+      onSaved={() => {}}
+    />,
+  );
+  const field = screen.getByLabelText(/食材、步骤与备注（原文）/);
+  expect((field as HTMLTextAreaElement).value).toBe(legacy);
+  fireEvent.click(screen.getByRole('button', { name: '保存菜谱' }));
+  await waitFor(() => expect(fixture.state.api).toHaveBeenCalled());
+  expect(JSON.parse(fixture.state.api.mock.calls[0][1].body).document.original).toBe(legacy);
 });

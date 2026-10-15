@@ -108,7 +108,12 @@ export function Requests({ manifest, initialId }: { manifest: Manifest; initialI
         ))}
       </div>
       {kind === 'submission' ? (
-        <RecipeEditor key={owner ?? 'visitor'} submission onSaved={() => load()} />
+        <RecipeEditor
+          key={owner ?? 'visitor'}
+          catalog={manifest}
+          submission
+          onSaved={() => load()}
+        />
       ) : (
         <form className="cloud-form" onSubmit={submit}>
           {kind === 'meal' ? (

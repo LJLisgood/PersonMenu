@@ -255,7 +255,7 @@ function Application() {
           ) : route.page === 'requests' ? (
             <Requests manifest={manifest} initialId={route.id} />
           ) : route.page === 'admin' ? (
-            <Admin onChanged={() => setCatalogAttempt((n) => n + 1)} />
+            <Admin catalog={manifest} onChanged={() => setCatalogAttempt((n) => n + 1)} />
           ) : route.page === 'home' ? (
             <Home manifest={manifest} route={route} navigate={navigate} />
           ) : route.page === 'library' || route.page === 'favorites' || route.page === 'recent' ? (
@@ -273,6 +273,7 @@ function Application() {
                   <p>{cloud.admin ? '在这里保存草稿或直接发布。' : '提交后由管理员审核发布。'}</p>
                 </header>
                 <RecipeEditor
+                  catalog={manifest}
                   key={cloud.session?.user.id ?? 'visitor'}
                   submission={!cloud.admin}
                   onSaved={() => {
