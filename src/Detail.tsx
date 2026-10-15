@@ -36,14 +36,6 @@ export function Detail({
     url.hash = `/recipe/${encodeURIComponent(recipe.id)}`;
     setMessage('');
     setShareUrl('');
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: recipe.name, url: url.href });
-        return;
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return;
-      }
-    }
     try {
       await navigator.clipboard.writeText(url.href);
       setMessage('菜谱链接已复制，可以发给亲友。');

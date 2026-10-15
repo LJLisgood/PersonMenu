@@ -93,7 +93,6 @@ it('右上角区分访客、游客与正式用户，退出使用当前认证客�
   await waitFor(() => expect(fixture.state.client.auth.signOut).toHaveBeenCalledOnce());
 });
 it('分享当前菜谱的永久链接，不携带搜索条件；无法自动复制时显示可选择的链接', async () => {
-  Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
   const copy = vi.fn(async () => {
     throw new Error('denied');
   });
