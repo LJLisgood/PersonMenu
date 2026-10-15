@@ -87,17 +87,6 @@ export function Account() {
                 管理员工作台
               </a>
             )}
-            <button
-              className="button subtle"
-              disabled={busy}
-              onClick={() => {
-                void cloud.client?.auth.signOut().then((result) => {
-                  if (result.error) setNotice(result.error.message);
-                });
-              }}
-            >
-              退出登录
-            </button>
           </div>
         </div>
       ) : (

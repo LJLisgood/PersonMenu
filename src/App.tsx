@@ -10,6 +10,7 @@ import type { Manifest, RecipeDetail, Route } from './types';
 import { Home } from './Home';
 import { PersonalProvider, usePersonal } from './PersonalState';
 import { CloudProvider, useCloud, loadCloudCatalog } from './Cloud';
+import { AccountBar } from './AccountBar';
 const Account = lazy(() => import('./Account').then((module) => ({ default: module.Account })));
 const Requests = lazy(() => import('./Requests').then((module) => ({ default: module.Requests })));
 const Admin = lazy(() => import('./Admin').then((module) => ({ default: module.Admin })));
@@ -182,7 +183,12 @@ function Application() {
       route.page === 'cook' ? (
         <Cooking key={detail.id} recipe={detail} route={route} />
       ) : (
-        <Detail key={detail.id} recipe={detail} route={route} />
+        <Detail
+          key={detail.id}
+          recipe={detail}
+          route={route}
+          onPhotoSaved={() => setCatalogAttempt((n) => n + 1)}
+        />
       )
     ) : (
       <div className="notice">
@@ -220,13 +226,13 @@ function Application() {
         }}
         favoriteCount={manifest.recipes.filter((r) => saved.favorites.includes(r.id)).length}
       />
-      <div className="mobile-header" inert={sidebarOpen}>
-        <a href="#/home">
+      <header className="site-header" inert={sidebarOpen}>
+        <a className="mobile-brand" href="#/home">
           <ChefHat size={22} />
           灶台笔记
         </a>
         <button
-          className="icon-button"
+          className="icon-button mobile-menu-trigger"
           ref={menuTrigger}
           aria-expanded={sidebarOpen}
           aria-controls="recipe-sidebar"
@@ -235,7 +241,8 @@ function Application() {
         >
           <Menu size={23} />
         </button>
-      </div>
+        <AccountBar />
+      </header>
       <main className="workspace" id="main-content" tabIndex={-1} inert={sidebarOpen}>
         {temporary && (
           <p className="storage-warning" role="status">

@@ -38,6 +38,104 @@ function mock(handler: (path: string, options: RequestInit) => Response | Promis
   );
 }
 afterEach(() => vi.unstubAllGlobals());
+describe('关联当前菜谱的照片申请', () => {
+  const photo = { recipeId: 'one', url: '/api/media/own-photo', baseCover: null };
+  it('只保存经过验证的目标和本人上传照片，不信任浏览器中的菜名和正文', async () => {
+    mock((path, options) => {
+      if (path.includes('kitchen_rate_limit')) return ok(true);
+      if (path.includes('/recipes?')) return ok([{ document: { name: '真实菜名', cover: null } }]);
+      if (path.includes('/uploads?')) return ok([{ owner_id: user.id }]);
+      if (path.includes('create_kitchen_request')) {
+        expect(JSON.parse(String(options.body)).p_payload).toEqual({
+          notes: '',
+          title: '真实菜名',
+          photo,
+        });
+        return ok({ id: requestId });
+      }
+      return ok([]);
+    });
+    const response = await handleApi(
+      request('requests', 'POST', {
+        id: requestId,
+        kind: 'photo',
+        nickname: '拍摄者',
+        payload: { photo, title: '伪造菜名', recipe: { original: '替换正文' } },
+      }),
+      env,
+    );
+    expect(response.status).toBe(201);
+  });
+  it('拒绝引用其他人照片，普通用户也不能直接公开照片或调用采纳接口', async () => {
+    mock((path) => {
+      if (path.includes('kitchen_rate_limit')) return ok(true);
+      if (path.includes('/recipes?')) return ok([{ document: { name: '菜', cover: null } }]);
+      if (path.includes('/uploads?')) return ok([{ owner_id: 'someone-else' }]);
+      return ok([]);
+    });
+    expect(
+      (
+        await handleApi(
+          request('requests', 'POST', {
+            id: requestId,
+            kind: 'photo',
+            nickname: '家人',
+            payload: { photo },
+          }),
+          env,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await handleApi(
+          request('admin/recipes/one/cover', 'PUT', { cover: photo.url, baseCover: null }),
+          env,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (await handleApi(request(`admin/requests/${requestId}/photo`, 'POST', {}), env)).status,
+    ).toBe(403);
+  });
+  it('封面已经变化时拒绝提交，服务端并发冲突返回可理解的提示', async () => {
+    mock((path) =>
+      path.includes('kitchen_rate_limit')
+        ? ok(true)
+        : path.includes('/recipes?')
+          ? ok([{ document: { cover: '/api/media/new' } }])
+          : ok([]),
+    );
+    expect(
+      (
+        await handleApi(
+          request('requests', 'POST', {
+            id: requestId,
+            kind: 'photo',
+            nickname: '家人',
+            payload: { photo },
+          }),
+          env,
+        )
+      ).status,
+    ).toBe(409);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        Promise.resolve(
+          url.endsWith('/auth/v1/user')
+            ? ok(user)
+            : url.endsWith('/rpc/is_kitchen_admin')
+              ? ok(true)
+              : ok({ message: 'photo_conflict' }, 400),
+        ),
+      ),
+    );
+    const response = await handleApi(request(`admin/requests/${requestId}/photo`, 'POST', {}), env);
+    expect(response.status).toBe(409);
+    expect(await response.text()).toContain('封面或申请状态已变化');
+  });
+});
 describe('Pages API 的信任边界', () => {
   it('公开配置不包含服务端密钥', async () => {
     const body = await (

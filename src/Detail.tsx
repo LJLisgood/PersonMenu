@@ -1,25 +1,57 @@
-import { useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ChefHat,
   Clock,
   Users,
-  ExternalLink,
-  FileText,
   ListChecks,
   Type,
-  Link,
+  Share2,
+  ImagePlus,
 } from 'lucide-react';
 import type { RecipeDetail, Route } from './types';
 import { routeHash, returnRoute } from './state';
 import { Difficulty, FavoriteButton, RecipeImage } from './RecipeCard';
 import { Markdown } from './Markdown';
 import { useCloud } from './Cloud';
-export function Detail({ recipe, route }: { recipe: RecipeDetail; route: Route }) {
+const PhotoUpload = lazy(() => import('./PhotoUpload').then((m) => ({ default: m.PhotoUpload })));
+export function Detail({
+  recipe,
+  route,
+  onPhotoSaved,
+}: {
+  recipe: RecipeDetail;
+  route: Route;
+  onPhotoSaved?: () => void;
+}) {
   const cloud = useCloud();
   const [large, setLarge] = useState(false);
   const [original, setOriginal] = useState(!recipe.steps.length);
   const [message, setMessage] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const uploadTrigger = useRef<HTMLButtonElement>(null);
+  const [shareUrl, setShareUrl] = useState('');
+  const share = async () => {
+    const url = new URL(location.pathname, location.origin);
+    url.hash = `/recipe/${encodeURIComponent(recipe.id)}`;
+    setMessage('');
+    setShareUrl('');
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: recipe.name, url: url.href });
+        return;
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url.href);
+      setMessage('菜谱链接已复制，可以发给亲友。');
+    } catch {
+      setShareUrl(url.href);
+      setMessage('请复制下方菜谱链接，发给亲友。');
+    }
+  };
   const [checked, setChecked] = useState<string[]>(() => {
     try {
       const value: unknown = JSON.parse(
@@ -69,11 +101,27 @@ export function Detail({ recipe, route }: { recipe: RecipeDetail; route: Route }
         {backLabel}
       </a>
       <header className="detail-header">
-        <RecipeImage recipe={recipe} eager className="detail-cover" />
+        <RecipeImage
+          recipe={recipe}
+          eager
+          className="detail-cover"
+          placeholderAction={
+            cloud.config.enabled && (
+              <button
+                ref={uploadTrigger}
+                className="button subtle"
+                aria-expanded={uploadingPhoto}
+                aria-controls="recipe-photo-upload"
+                onClick={() => setUploadingPhoto((v) => !v)}
+              >
+                <ImagePlus size={18} />
+                上传这道菜的照片
+              </button>
+            )
+          }
+        />
         <div>
-          <span className="detail-category">
-            {recipe.category} · {recipe.source === 'personal' ? '我的菜谱' : 'HowToCook'}
-          </span>
+          <span className="detail-category">{recipe.category}</span>
           <h1>{recipe.name}</h1>
           {recipe.description && <p>{recipe.description}</p>}
           <div className="detail-meta">
@@ -112,6 +160,10 @@ export function Detail({ recipe, route }: { recipe: RecipeDetail; route: Route }
               开始做这道菜
             </a>
             <FavoriteButton recipe={recipe} />
+            <button className="button subtle" onClick={() => void share()}>
+              <Share2 size={18} />
+              分享菜谱
+            </button>
           </div>
           <small className="local-hint">
             {cloud.session && !cloud.session.user.is_anonymous
@@ -120,41 +172,28 @@ export function Detail({ recipe, route }: { recipe: RecipeDetail; route: Route }
           </small>
         </div>
       </header>
-      <div className="detail-source">
-        {recipe.sourceUrl ? (
-          <a href={recipe.sourceUrl} target="_blank" rel="noreferrer">
-            <ExternalLink size={15} />
-            HowToCook 原文
-          </a>
-        ) : (
-          <span>
-            <FileText size={15} />
-            我的本地菜谱
-          </span>
-        )}
-        <details>
-          <summary>本地文件</summary>
-          <code>{recipe.sourcePath}</code>
-        </details>
-        <button
-          className="text-button"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(location.href);
-              setMessage('已复制当前地址；其他设备需能访问此站点才能打开。');
-            } catch {
-              setMessage('无法自动复制，请从浏览器地址栏复制当前地址。');
-            }
-          }}
-        >
-          <Link size={15} />
-          复制当前地址
-        </button>
-      </div>
+      {uploadingPhoto && (
+        <Suspense fallback={<p className="notice">正在打开照片上传…</p>}>
+          <PhotoUpload
+            recipe={recipe}
+            onSaved={onPhotoSaved}
+            onCancel={() => {
+              setUploadingPhoto(false);
+              uploadTrigger.current?.focus();
+            }}
+          />
+        </Suspense>
+      )}
       {message && (
         <p className="reading-notice" role="status">
           {message}
         </p>
+      )}
+      {shareUrl && (
+        <label className="share-link-field">
+          菜谱链接
+          <input readOnly value={shareUrl} onFocus={(e) => e.target.select()} />
+        </label>
       )}
       <nav className="reading-toolbar" aria-label="菜谱阅读导航">
         <div>

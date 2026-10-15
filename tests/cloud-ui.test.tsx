@@ -5,6 +5,10 @@ import { Account } from '../src/Account';
 import { Requests } from '../src/Requests';
 import { Admin } from '../src/Admin';
 import { RecipeEditor } from '../src/RecipeEditor';
+import { AccountBar } from '../src/AccountBar';
+import { PhotoUpload } from '../src/PhotoUpload';
+import { Detail } from '../src/Detail';
+import { emptyFilters } from '../src/state';
 import type { Manifest } from '../src/types';
 const fixture = vi.hoisted(() => ({
   state: {} as Record<string, any>,
@@ -13,6 +17,12 @@ const fixture = vi.hoisted(() => ({
 vi.mock('../src/Cloud', () => ({ useCloud: () => fixture.state }));
 vi.mock('../src/Captcha', () => ({
   useCaptcha: () => ({ challenge: fixture.challenge, element: { current: null } }),
+}));
+vi.mock('../src/photo', () => ({
+  compressPhoto: vi.fn(async () => new Blob(['photo'], { type: 'image/webp' })),
+}));
+vi.mock('../src/PersonalState', () => ({
+  usePersonal: () => ({ saved: { favorites: [] }, toggle: vi.fn(), syncing: false }),
 }));
 const session = { user: { id: 'member', is_anonymous: false, email: 'member@example.test' } };
 const manifest: Manifest = {
@@ -38,6 +48,7 @@ const manifest: Manifest = {
   upstream: { commit: '', recipeCount: 0 },
 };
 beforeEach(() => {
+  Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:preview'), revokeObjectURL: vi.fn() });
   fixture.state = {
     config: { enabled: true },
     session,
@@ -56,6 +67,105 @@ beforeEach(() => {
       },
     },
   };
+});
+const detail = () => ({
+  ...manifest.recipes[0],
+  html: '',
+  original: '原文',
+  steps: [],
+  supporting: [],
+  sourcePath: 'original.md',
+  sourceUrl: 'https://example.test/upstream',
+});
+it('右上角区分访客、游客与正式用户，退出使用当前认证客户端', async () => {
+  fixture.state.session = null;
+  const view = render(<AccountBar />);
+  expect(screen.getByText('未登录访客')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '退出登录' })).toBeNull();
+  fixture.state.session = { user: { id: 'guest', is_anonymous: true } };
+  view.rerender(<AccountBar />);
+  expect(screen.getByText('游客登录')).toBeTruthy();
+  fixture.state.session = session;
+  view.rerender(<AccountBar />);
+  expect(screen.getByText('用户登录')).toBeTruthy();
+  expect(screen.getByText('member@example.test')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '退出登录' }));
+  await waitFor(() => expect(fixture.state.client.auth.signOut).toHaveBeenCalledOnce());
+});
+it('分享当前菜谱的永久链接，不携带搜索条件；无法自动复制时显示可选择的链接', async () => {
+  Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+  const copy = vi.fn(async () => {
+    throw new Error('denied');
+  });
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: copy } });
+  render(
+    <Detail
+      recipe={detail()}
+      route={{
+        page: 'recipe',
+        id: 'one',
+        filters: { ...emptyFilters, q: '私人搜索' },
+        view: 'list',
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: '分享菜谱' }));
+  await screen.findByText('请复制下方菜谱链接，发给亲友。');
+  const value = (screen.getByLabelText('菜谱链接') as HTMLInputElement).value;
+  expect(value).toBe(`${location.origin}${location.pathname}#/recipe/one`);
+  expect(copy).toHaveBeenCalledWith(value);
+});
+it('游客补图在重试时复用已上传图片和申请编号，不直接修改正式菜谱', async () => {
+  const guest = { user: { id: 'guest', is_anonymous: true } };
+  fixture.state.session = guest;
+  fixture.state.ensureGuest = vi.fn(async () => guest);
+  let attempts = 0;
+  fixture.state.api = vi.fn(async (path: string) => {
+    if (path === 'uploads') return { url: '/api/media/own-photo' };
+    if (++attempts === 1) throw new Error('通知响应丢失');
+    return { notification: 'pending' };
+  });
+  render(<PhotoUpload recipe={detail()} onCancel={() => {}} />);
+  fireEvent.change(screen.getByLabelText(/选择成品照片/), {
+    target: { files: [new File(['x'], 'photo.png', { type: 'image/png' })] },
+  });
+  fireEvent.change(screen.getByLabelText('你的昵称'), { target: { value: '亲友' } });
+  fireEvent.submit(screen.getByRole('button', { name: '提交照片审核' }).closest('form')!);
+  await screen.findByText('通知响应丢失');
+  fireEvent.submit(screen.getByRole('button', { name: '提交照片审核' }).closest('form')!);
+  await screen.findByText(/照片已提交，等待管理员审核/);
+  const calls = fixture.state.api.mock.calls;
+  expect(calls.filter(([p]: [string]) => p === 'uploads')).toHaveLength(1);
+  const payloads = calls
+    .filter(([p]: [string]) => p === 'requests')
+    .map(([, o]: [string, RequestInit]) => JSON.parse(String(o.body)));
+  expect(payloads[0].id).toBe(payloads[1].id);
+  expect(payloads[0]).toMatchObject({
+    kind: 'photo',
+    captcha: 'captcha-token',
+    payload: { photo: { recipeId: 'one', url: '/api/media/own-photo', baseCover: null } },
+  });
+  expect(calls.every(([p]: [string]) => !p.startsWith('admin/'))).toBe(true);
+});
+it('管理员从缺图入口只保存对应封面，不重建菜谱或发送投稿', async () => {
+  fixture.state.admin = true;
+  fixture.state.api = vi.fn(async (path: string) =>
+    path === 'uploads' ? { url: '/api/media/admin-photo' } : {},
+  );
+  const saved = vi.fn();
+  render(<PhotoUpload recipe={detail()} onCancel={() => {}} onSaved={saved} />);
+  fireEvent.change(screen.getByLabelText(/选择成品照片/), {
+    target: { files: [new File(['x'], 'photo.png', { type: 'image/png' })] },
+  });
+  fireEvent.submit(screen.getByRole('button', { name: '保存为菜谱封面' }).closest('form')!);
+  await waitFor(() => expect(saved).toHaveBeenCalledOnce());
+  const [path, options] = fixture.state.api.mock.calls[1];
+  expect(path).toBe('admin/recipes/one/cover');
+  expect(options.method).toBe('PUT');
+  expect(JSON.parse(String(options.body))).toEqual({
+    cover: '/api/media/admin-photo',
+    baseCover: null,
+  });
 });
 afterEach(() => {
   cleanup();

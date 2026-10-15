@@ -10,7 +10,7 @@ export type RecipeRecord = {
   updated_at: string;
   upstream_commit: string | null;
 };
-export type RequestKind = 'meal' | 'wish' | 'submission';
+export type RequestKind = 'meal' | 'wish' | 'submission' | 'photo';
 export type RequestState = 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
 export type KitchenRequest = {
   id: string;
@@ -28,6 +28,7 @@ export type KitchenRequest = {
     reference?: string;
     notes?: string;
     recipe?: RecipeDetail;
+    photo?: { recipeId: string; url: string; baseCover: string | null };
   };
   state: RequestState;
   admin_note: string;
@@ -53,6 +54,7 @@ export const requestLabels: Record<RequestKind, string> = {
   meal: '点菜',
   wish: '新菜心愿',
   submission: '菜谱投稿',
+  photo: '菜品补图',
 };
 export const stateLabels: Record<RequestState, string> = {
   pending: '待处理',

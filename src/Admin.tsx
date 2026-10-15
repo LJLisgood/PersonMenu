@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useCloud } from './Cloud';
 import { RecipeEditor } from './RecipeEditor';
+import { PrivatePhoto } from './PrivatePhoto';
 import {
   requestLabels,
   stateLabels,
@@ -288,6 +289,14 @@ export function Admin({ onChanged }: { onChanged: () => void }) {
                 setEditing('new');
                 setTab('recipes');
               }}
+              onPhoto={(note) =>
+                void run(() =>
+                  cloud.api(`admin/requests/${item.id}/photo`, {
+                    method: 'POST',
+                    body: JSON.stringify({ note }),
+                  }),
+                )
+              }
             />
           ))}
           {moreRequests && (
@@ -323,14 +332,20 @@ function RequestReview({
   busy,
   onUpdate,
   onAdopt,
+  onPhoto,
 }: {
   item: KitchenRequest;
   busy: boolean;
   onUpdate: (state: RequestState, note: string) => void;
   onAdopt: () => void;
+  onPhoto: (note: string) => void;
 }) {
   const [state, setState] = useState(item.state),
     [note, setNote] = useState(item.admin_note);
+  useEffect(() => {
+    setState(item.state);
+    setNote(item.admin_note);
+  }, [item.state, item.admin_note]);
   return (
     <article className="review-card">
       <header>
@@ -353,6 +368,22 @@ function RequestReview({
         </a>
       )}
       <small>{new Date(item.created_at).toLocaleString()}</small>
+      {item.payload.photo && (
+        <div className="photo-review">
+          <PrivatePhoto url={item.payload.photo.url} />
+          <a
+            className="text-button"
+            href={`#/recipe/${encodeURIComponent(item.payload.photo.recipeId)}`}
+          >
+            查看对应菜谱
+          </a>
+          {['pending', 'accepted'].includes(item.state) && (
+            <button className="button primary" disabled={busy} onClick={() => onPhoto(note)}>
+              采纳为菜谱封面
+            </button>
+          )}
+        </div>
+      )}
       {item.payload.recipe && (
         <>
           <details>
@@ -367,12 +398,21 @@ function RequestReview({
       <div className="form-columns">
         <label>
           处理状态
-          <select value={state} onChange={(e) => setState(e.target.value as RequestState)}>
-            {Object.entries(stateLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
+          <select
+            value={state}
+            disabled={item.kind === 'photo' && item.state === 'completed'}
+            onChange={(e) => setState(e.target.value as RequestState)}
+          >
+            {Object.entries(stateLabels)
+              .filter(
+                ([value]) =>
+                  item.kind !== 'photo' || value !== 'completed' || item.state === 'completed',
+              )
+              .map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
           </select>
         </label>
         <label>
@@ -380,7 +420,11 @@ function RequestReview({
           <input maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
       </div>
-      <button className="button primary" disabled={busy} onClick={() => onUpdate(state, note)}>
+      <button
+        className="button primary"
+        disabled={busy || (item.kind === 'photo' && item.state === 'completed')}
+        onClick={() => onUpdate(state, note)}
+      >
         保存处理结果
       </button>
     </article>

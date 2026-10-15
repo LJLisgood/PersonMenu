@@ -175,24 +175,6 @@ export function Sidebar({
             >
               点菜与投稿
             </button>
-            <button
-              className={route.page === 'add' ? 'active' : ''}
-              onClick={() => {
-                navigate({ ...route, page: 'add', id: undefined });
-                close();
-              }}
-            >
-              {cloud.admin ? '新增菜谱' : '分享菜谱'}
-            </button>
-            <button
-              className={route.page === 'account' ? 'active' : ''}
-              onClick={() => {
-                navigate({ ...route, page: 'account', id: undefined });
-                close();
-              }}
-            >
-              {cloud.session && !cloud.session.user.is_anonymous ? '我的账号' : '登录 / 注册'}
-            </button>
             {cloud.admin && (
               <button
                 className={route.page === 'admin' ? 'active' : ''}

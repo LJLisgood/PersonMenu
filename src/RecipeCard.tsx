@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ArrowUpRight, CookingPot, Heart, Clock } from 'lucide-react';
 import { assetUrl } from './state';
 import { usePersonal } from './PersonalState';
@@ -21,10 +21,12 @@ export function RecipeImage({
   recipe,
   eager = false,
   className = '',
+  placeholderAction,
 }: {
   recipe: Recipe;
   eager?: boolean;
   className?: string;
+  placeholderAction?: ReactNode;
 }) {
   const [failed, setFailed] = useState<string | null>(null);
   return (
@@ -44,6 +46,7 @@ export function RecipeImage({
           <CookingPot strokeWidth={1.2} size={44} />
           <span>{recipe.name}</span>
           <small>{failed ? '图片暂时无法加载' : '暂无成品照片'}</small>
+          {placeholderAction}
           {failed && (
             <button
               className="text-button"

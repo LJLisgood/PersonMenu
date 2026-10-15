@@ -60,6 +60,10 @@ async function database<T>(
     if (error.message?.includes('rate_limited')) throw new ApiError(429, '提交太频繁，请稍后再试');
     if (error.message?.includes('idempotency_conflict'))
       throw new ApiError(409, '本次申请已提交，请重新开始一份申请');
+    if (error.message?.includes('photo_conflict'))
+      throw new ApiError(409, '菜谱封面或申请状态已变化，请刷新后重新查看');
+    if (error.message?.includes('photo_invalid'))
+      throw new ApiError(400, '照片不存在、不属于申请人或菜谱已下架');
     if (response.status === 409) throw new ApiError(409, '记录已存在或已更新，请刷新后再试');
     throw new ApiError(
       response.status === 401 || response.status === 403 ? 403 : 502,
@@ -243,7 +247,12 @@ export async function sendNotification(env: Env, id: string): Promise<boolean> {
       true,
     );
     if (!application) throw new Error('missing_request');
-    const labels = { meal: '新的点菜申请', wish: '新的菜品心愿', submission: '新的菜谱投稿' };
+    const labels = {
+      meal: '新的点菜申请',
+      wish: '新的菜品心愿',
+      submission: '新的菜谱投稿',
+      photo: '新的菜品补图',
+    };
     // Keep contact details and user-supplied recipe content in the protected inbox.
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -288,7 +297,7 @@ async function createRequest(
     nickname = text(data.nickname, '昵称', 40);
   const email = data.email ? text(data.email, '邮箱', 254) : null;
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, '邮箱格式不正确');
-  if (!['meal', 'wish', 'submission'].includes(String(data.kind)))
+  if (!['meal', 'wish', 'submission', 'photo'].includes(String(data.kind)))
     throw new ApiError(400, '申请类型不正确');
   const kind = data.kind as KitchenRequest['kind'];
   const input = data.payload as Record<string, unknown> | undefined;
@@ -355,6 +364,38 @@ async function createRequest(
     payload.reference = text(input.reference ?? '', '参考链接', 500, false);
     if (payload.reference && !/^https?:\/\//i.test(payload.reference))
       throw new ApiError(400, '参考链接必须是 http 或 https 地址');
+  } else if (kind === 'photo') {
+    const photo = input.photo as Record<string, unknown> | undefined;
+    if (!photo || typeof photo !== 'object' || Array.isArray(photo))
+      throw new ApiError(400, '照片内容不正确');
+    const recipeId = safeId(text(photo.recipeId, '菜谱编号', 100));
+    const url = text(photo.url, '照片地址', 150);
+    if (!/^\/api\/media\/[a-zA-Z0-9_.-]+$/.test(url)) throw new ApiError(400, '照片地址不正确');
+    const baseCover = photo.baseCover === null ? null : text(photo.baseCover, '原封面', 500);
+    if (!previous.length) {
+      const [target] = await database<RecipeRecord[]>(
+        env,
+        `recipes?id=eq.${recipeId}&state=eq.published`,
+        {},
+        undefined,
+        true,
+      );
+      if (!target || (target.document.cover ?? null) !== baseCover)
+        throw new ApiError(409, '菜谱封面已变化或已下架，请刷新后再提交');
+      const [upload] = await database<{ owner_id: string }[]>(
+        env,
+        `uploads?id=eq.${safeId(url.slice('/api/media/'.length))}&select=owner_id`,
+        {},
+        undefined,
+        true,
+      );
+      if (!upload || upload.owner_id !== auth.user.id)
+        throw new ApiError(403, '请使用你自己上传的照片');
+      payload.title = target.document.name;
+    } else {
+      payload.title = previous[0].payload.title;
+    }
+    payload.photo = { recipeId, url, baseCover };
   } else {
     payload.recipe = await prepareRecipe(input.recipe as Record<string, unknown>, `personal-${id}`);
     await checkMedia(env, payload.recipe, auth.user.id, false);
@@ -596,14 +637,47 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       const id = uuid(path[2]);
       return json({ sent: await sendNotification(env, id) });
     }
+    if (path[1] === 'recipes' && path[2] && path[3] === 'cover' && method === 'PUT') {
+      const data = await body(request);
+      const cover = text(data.cover, '照片地址', 150);
+      if (!/^\/api\/media\/[a-zA-Z0-9_.-]+$/.test(cover)) throw new ApiError(400, '照片地址不正确');
+      const baseCover = data.baseCover === null ? null : text(data.baseCover, '原封面', 500);
+      return json(
+        await rpc(env, 'set_recipe_cover', {
+          p_recipe: safeId(path[2]),
+          p_cover: cover,
+          p_base_cover: baseCover,
+          p_owner: auth.user.id,
+        }),
+      );
+    }
+    if (path[1] === 'requests' && path[2] && path[3] === 'photo' && method === 'POST') {
+      const data = await body(request);
+      return json(
+        await rpc(env, 'approve_recipe_photo', {
+          p_request: uuid(path[2]),
+          p_note: text(data.note ?? '', '处理备注', 1000, false),
+        }),
+      );
+    }
     if (path[1] === 'requests' && path[2] && method === 'PATCH') {
       const data = await body(request);
       const states: RequestState[] = ['pending', 'accepted', 'rejected', 'completed', 'cancelled'];
       if (!states.includes(data.state as RequestState)) throw new ApiError(400, '处理状态不正确');
-      const note = text(data.note ?? '', '处理备注', 1000, false);
-      const rows = await database(
+      const [current] = await database<KitchenRequest[]>(
         env,
         `kitchen_requests?id=eq.${uuid(path[2])}`,
+        {},
+        undefined,
+        true,
+      );
+      if (!current) throw new ApiError(404, '申请不存在');
+      if (current.kind === 'photo' && (current.state === 'completed' || data.state === 'completed'))
+        throw new ApiError(409, '补图申请请使用“采纳为菜谱封面”，已采纳的记录不能修改状态');
+      const note = text(data.note ?? '', '处理备注', 1000, false);
+      const rows = await database<KitchenRequest[]>(
+        env,
+        `kitchen_requests?id=eq.${uuid(path[2])}${current.kind === 'photo' ? '&state=neq.completed' : ''}`,
         {
           method: 'PATCH',
           body: JSON.stringify({
@@ -615,6 +689,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
         undefined,
         true,
       );
+      if (!rows.length) throw new ApiError(409, '申请状态已变化，请刷新后再处理');
       return json(rows);
     }
     if (path[1] === 'recipes' && (method === 'POST' || method === 'PATCH')) {
