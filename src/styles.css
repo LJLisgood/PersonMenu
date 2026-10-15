@@ -55,6 +55,86 @@ select:focus {
   border-color: var(--green);
   box-shadow: 0 0 0 3px #193f3210;
 }
+select {
+  color-scheme: light;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+select option {
+  color: #24352f;
+  background: #fffefa;
+}
+/* Style the native picker where supported, preserving select semantics and validation. */
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+  select {
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+  }
+  select::picker(select) {
+    box-sizing: border-box;
+    font: inherit;
+    color: #24352f;
+    background: #fffefa;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    box-shadow: 0 10px 30px #193f321a;
+    padding: 6px;
+    margin-block: 6px;
+    max-block-size: min(360px, 60dvh);
+    max-inline-size: calc(100vw - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  select::picker-icon {
+    color: var(--muted);
+  }
+  select:open {
+    border-color: #8fa798;
+    box-shadow: 0 0 0 3px #193f3210;
+  }
+  select:open::picker-icon {
+    rotate: 180deg;
+  }
+  select option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 9px 12px;
+    border-radius: 7px;
+    font-weight: 400;
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  select option:checked {
+    color: var(--green);
+    background: #e8efe6;
+    font-weight: 600;
+  }
+  select option:not(:disabled):is(:hover, :focus) {
+    color: var(--green);
+    background: #f1f5ef;
+    outline: none;
+  }
+  select option:disabled {
+    color: var(--muted);
+  }
+  select option::checkmark {
+    color: var(--green);
+    margin-inline-start: auto;
+    order: 1;
+  }
+}
 button:focus-visible,
 a:focus-visible,
 summary:focus-visible {
